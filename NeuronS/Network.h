@@ -2,11 +2,21 @@
 #define NETWORK_H
 #include"Neuron.h"
 #include"Globals.h"
+//用于优化器的额外参数表
+#define EXTRACOUNT 4
+#define ADAGRAD 0	//小常数delta，常为1e-7
+#define RMSPROP_1 0	//小常数delta，常为1e-6
+#define RMSPROP_2 1	//衰减速率\rou
+#define ADAM_DELTA 0	//小常数delta，常为1e-8
+#define ADAM_RO1 1	//Adam中的\rou1，常为0.9
+#define ADAM_RO2 2	//Adam中的\rou2，常为0.999
+#define ADAM_EPSILON 3	//Adam中的步长，常为0.001
 typedef struct _Network
 {
 	char name[50];	//名称
 	int il, ih, iw, ol, oh, ow;
 	double** x, *dx;
+	double extraArg[EXTRACOUNT];	//用于优化器的额外参数表
 	double* out;	//实际运行输出
 	double** y;
 	int number;	//神经元数量
@@ -44,4 +54,7 @@ double SquareLoss(struct _Network*,int indx);
 double CrossEntropyLoss(struct _Network* n, int indx);
 void DSquareloss(struct _Network*,int indx);
 void DCrossEntropyLoss(struct _Network* n, int indx);
+void RecordArgs(Network* n);
+void SaveArgs(Network* n,FILE* fp);
+void ReadArgs(Network* n,FILE* fp);
 #endif

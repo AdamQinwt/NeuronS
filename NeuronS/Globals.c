@@ -252,3 +252,50 @@ double clipByValue(double x, double a, double b)
 	if (x > b) return b;
 	return x;
 }
+void square1dArray(double* to, double* from, int w)
+{
+	int i;
+	for (i = 0; i < w; i++) to[i] = from[i] * from[i];
+}
+void square2dArray(double** to, double** from, int h, int w)
+{
+	int i, j;
+	for (i = 0; i < h; i++)
+	{
+		for (j = 0; j < w; j++)
+		{
+			to[i][j] = from[i][j] * from[i][j];
+		}
+	}
+}
+void square3dArray(double*** to, double*** from, int l, int h, int w)
+{
+	int i, j,m;
+	for (m = 0; m < l; m++)
+	{
+		for (i = 0; i < h; i++)
+		{
+			for (j = 0; j < w; j++)
+			{
+				to[m][i][j] = from[m][i][j] * from[m][i][j];
+			}
+		}
+	}
+}
+void square4dArray(double**** to, double**** from, int k, int l, int h, int w)
+{
+	int i, j,m,n;
+	for (m = 0; m < k; m++)
+	{
+		for (n = 0; n < l; n++)
+		{
+			for (i = 0; i < h; i++)
+			{
+				for (j = 0; j < w; j++)
+				{
+					to[m][n][i][j] = from[m][n][i][j] * from[m][n][i][j];
+				}
+			}
+		}
+	}
+}

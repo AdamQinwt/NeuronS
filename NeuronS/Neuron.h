@@ -28,6 +28,6 @@ void runMaxPool(struct _Neuron* n);
 void runAveragePool(struct _Neuron* n);
 void runSoftmax(struct _Neuron* n);
 void bpFC(struct _Neuron* n);
-void SetFC(Neuron* n, double learningRate, char* act);
+void SetFC(Neuron* n, double learningRate, char* act,char* needAlloc);
 void DestroyFC(Neuron* n);
 #endif

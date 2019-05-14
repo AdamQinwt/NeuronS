@@ -9,7 +9,7 @@
 		y,h为纵向
 		k,l为频道方向
 		[0]为输入，[1]为输出
-		grad中实际为负梯度
+		数据文件以1个整数开头，标识其数据集大小，名称在训练及测试时指定
 */
 /*注意：
 		神经元结构仍为拓扑结构
@@ -25,7 +25,7 @@
 #define MLN(type,n) (type*)malloc(n*sizeof(type))
 #define MLD(n) (double*)malloc(n*sizeof(double))
 #define RST(p,type,n) memset(p,0,n*sizeof(type))
-#define RSD(p,n) memset(p,0,n*sizeof(double))
+#define RSD(p,n) if(p) memset(p,0,n*sizeof(double))
 #define FOR(iter,from,to,step) for(iter=from;iter<to;iter+=step)
 #define FORFROM0STEP1(iter,to) for(iter=0;iter<to;iter++)
 #define FORCHAIN(iter,list) for(iter=list.head;iter;iter=iter->next)
@@ -62,4 +62,8 @@ void read2dArray(FILE* fp, double** a, int h, int w);
 void read3dArray(FILE* fp, double*** a, int l, int h, int w);
 void read4dArray(FILE* fp, double**** a, int k, int l, int h, int w);
 double clipByValue(double x, double a, double b);
+void square1dArray(double* to,double* from,int w);
+void square2dArray(double** to,double** from,int h,int w);
+void square3dArray(double*** to,double*** from,int l,int h,int w);
+void square4dArray(double**** to,double**** from,int k,int l,int h,int w);
 #endif

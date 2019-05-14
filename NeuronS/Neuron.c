@@ -275,7 +275,7 @@ void bpConv(struct _Neuron* n)
 void bpMaxPool(struct _Neuron* n);
 void bpAveragePool(struct _Neuron* n);
 void bpSoftmax(struct _Neuron* n);
-void SetFC(Neuron* n,double learningRate,char* act)
+void SetFC(Neuron* n,double learningRate,char* act,char* needAlloc)
 {
 	//n->type = FC;
 	n->run = runFC;
@@ -300,15 +300,17 @@ void SetFC(Neuron* n,double learningRate,char* act)
 	n->learningRate = learningRate;
 	n->momentum = 0;
 	n->count = 0;
-	n->arg.fc.original.bias = MLN(double, n->info.fc.out);
-	n->arg.fc.grad.bias = MLN(double, n->info.fc.out);
+	n->arg.fc.original.bias = needAlloc[ORIGINAL]?MLN(double, n->info.fc.out):NULL;
+	n->arg.fc.grad.bias = needAlloc[GRAD] ? MLN(double, n->info.fc.out) : NULL;
+	n->arg.fc.delta.bias = needAlloc[DELTA] ? MLN(double, n->info.fc.out) : NULL;
+	n->arg.fc.shadow.bias = needAlloc[SHADOW] ? MLN(double, n->info.fc.out) : NULL;
+	n->arg.fc.original.weight = needAlloc[ORIGINAL] ? new2dDoubleArray(n->info.fc.in,n->info.fc.out) : NULL;
+	n->arg.fc.grad.weight = needAlloc[GRAD] ? new2dDoubleArray(n->info.fc.in,n->info.fc.out) : NULL;
+	n->arg.fc.delta.weight = needAlloc[DELTA] ? new2dDoubleArray(n->info.fc.in,n->info.fc.out) : NULL;
+	n->arg.fc.shadow.weight = needAlloc[SHADOW] ? new2dDoubleArray(n->info.fc.in, n->info.fc.out) : NULL;
 	RSD(n->arg.fc.grad.bias, n->info.fc.out);
-	n->arg.fc.delta.bias = MLN(double, n->info.fc.out);
-	n->arg.fc.shadow.bias = NULL;
-	n->arg.fc.original.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
-	n->arg.fc.grad.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
-	n->arg.fc.delta.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
-	n->arg.fc.shadow.weight = NULL;
+	RSD(n->arg.fc.shadow.bias, n->info.fc.out);
+	RSD(n->arg.fc.delta.bias, n->info.fc.out);
 }
 void DestroyFC(Neuron* n)
 {
