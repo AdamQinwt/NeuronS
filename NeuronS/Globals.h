@@ -44,6 +44,8 @@ double*** new3dDoubleArrayFrom1d(int l, int h, int w, int offset, double* p);
 int argmax(double* a, int l);
 double sigmoid(double x);
 double dsigmoid(double y);
+double relu(double x);
+double drelu(double y);
 double randomDouble(double absRange);
 void assignRandomDoubleArray(double* a, int len, double absrange);
 void assignZeroDoubleArray(double* a, int len);
@@ -59,4 +61,5 @@ void read1dArray(FILE* fp, double* a, int w);
 void read2dArray(FILE* fp, double** a, int h, int w);
 void read3dArray(FILE* fp, double*** a, int l, int h, int w);
 void read4dArray(FILE* fp, double**** a, int k, int l, int h, int w);
+double clipByValue(double x, double a, double b);
 #endif

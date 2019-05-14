@@ -147,6 +147,14 @@ double dsigmoid(double y)
 {
 	return y * (1 - y);
 }
+double relu(double x)
+{
+	return x > 0 ? x : 0;
+}
+double drelu(double y)
+{
+	return y > 0 ? 1 : 0;
+}
 void print1dArray(double* a, int w)
 {
 	int i;
@@ -236,4 +244,10 @@ void read4dArray(FILE* fp, double**** a, int k, int l, int h, int w)
 			}
 		}
 	}
+}
+double clipByValue(double x, double a, double b)
+{
+	if (x < a) return a;
+	if (x > b) return b;
+	return x;
 }

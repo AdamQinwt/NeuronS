@@ -6,13 +6,15 @@ void _SGD_Optimizer_FC(Neuron* n)
 	{
 		FORFROM0STEP1(j, n->info.fc.out)
 		{
-			n->arg.fc.delta.bias[j] = n->arg.fc.grad.bias[j];
-			n->arg.fc.original.bias[j] += n->arg.fc.original.bias[j];
+			n->arg.fc.delta.bias[j] = n->arg.fc.grad.bias[j]*n->learningRate;
+			n->arg.fc.original.bias[j] -= n->arg.fc.delta.bias[j];
+			n->arg.fc.grad.bias[j] = 0;
 			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.delta.weight[i][j] = n->arg.fc.grad.weight[i][j];
-				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
+				n->arg.fc.delta.weight[i][j] = n->arg.fc.grad.weight[i][j] * n->learningRate;
+				n->arg.fc.original.weight[i][j] -= n->arg.fc.delta.weight[i][j];
+				n->arg.fc.grad.weight[i][j] = 0;
 			}
 		}
 	}
@@ -20,13 +22,15 @@ void _SGD_Optimizer_FC(Neuron* n)
 	{
 		FORFROM0STEP1(j, n->info.fc.out)
 		{
-			n->arg.fc.delta.bias[j] = n->arg.fc.grad.bias[j]/n->count;
-			n->arg.fc.original.bias[j] += n->arg.fc.original.bias[j];
-			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
+			n->arg.fc.delta.bias[j] = n->arg.fc.grad.bias[j]/n->count*n->learningRate;
+			n->arg.fc.original.bias[j] -= n->arg.fc.delta.bias[j];
+			n->arg.fc.grad.bias[j] = 0;
+			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.delta.weight[i][j] = n->arg.fc.grad.weight[i][j] / n->count;
-				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
+				n->arg.fc.delta.weight[i][j] = n->arg.fc.grad.weight[i][j] / n->count*n->learningRate;
+				n->arg.fc.original.weight[i][j] -= n->arg.fc.delta.weight[i][j];
+				n->arg.fc.grad.weight[i][j] = 0;
 			}
 		}
 	}
@@ -105,6 +109,21 @@ void Normalized_Initialization(Network* n)
 		n->neurons[num].count = 0;
 	}
 }
+void Uniform_Initialization(Network* n)
+{
+	int num;
+	FORFROM0STEP1(num, n->number)
+	{
+		switch (n->neurons[num].type)
+		{
+		case FC: _Normalized_Initialization_FC(n->neurons + num,0.5); break;
+		case CONV: _Normalized_Initialization_Conv(n->neurons + num,0.5); break;
+		default:
+			break;
+		}
+		n->neurons[num].count = 0;
+	}
+}
 void run(Network* n)
 {
 	int i;
@@ -128,7 +147,7 @@ void Set(Network* n)
 	{
 		switch (n->neurons[i].type)
 		{
-		case FC:SetFC(n->neurons + i, 0.3, ""); break;
+		case FC:SetFC(n->neurons + i, 0.3, (i==n->number-1)?"sigmoid":"relu"); break;
 		default:
 			break;
 		}
@@ -177,12 +196,13 @@ Network* newNetwork(char* name,int number, int batch, int il, int ih, int iw,int
 	n->neurons = MLN(Neuron, n->number);
 	//n->LearningRateAdjustment = none;
 	//n->needAlloc[ORIGINAL] = 1;
-	//n->Loss = SquareLoss;
-	//n->Dloss = DSquareloss;
-	n->Loss = CrossEntropyLoss;
-	n->Dloss = DCrossEntropyLoss;
+	n->Loss = SquareLoss;
+	n->Dloss = DSquareloss;
+	//n->Loss = CrossEntropyLoss;
+	//n->Dloss = DCrossEntropyLoss;
 	n->trainingStep = 0;
 	n->InitNetworkArgs = Normalized_Initialization;
+	//n->InitNetworkArgs = Uniform_Initialization;
 	n->LearningRateAdjustment = none;
 	n->Optimizer = SGD_Optimizer;
 	//开辟输入输出空间、答案空间（先在外界完成）
@@ -254,6 +274,7 @@ double CrossEntropyLoss(struct _Network* n, int indx)
 	FORFROM0STEP1(k, n->ow)
 	{
 		sum -= n->y[indx][k] * log(n->out[k]);
+		sum-= (1-n->y[indx][k]) * log(1-n->out[k]);
 	}
 	n->loss += sum / n->batch;
 	return n->loss;
@@ -267,14 +288,14 @@ void DSquareloss(struct _Network* n, int indx)
 		n->neurons[n->number - 1].data.d11.dout[i] += d*(n->out[i] - n->y[indx][i]);
 	}
 }
-double DCrossEntropyLoss(struct _Network* n, int indx)
+void DCrossEntropyLoss(struct _Network* n, int indx)
 {
 	int i;
 	//double d = ((double)2) / n->batch;
 	FORFROM0STEP1(i, n->ow)
 	{
-		CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
-		n->neurons[n->number - 1].data.d11.dout[i] += n->y[indx][i]/n->out[i];
+	//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+		n->neurons[n->number - 1].data.d11.dout[i]-= (n->y[indx][i]/n->out[i]+ (n->y[indx][i]-1) / (1-n->out[i]))/n->batch;
 	}
 }
 void ResetLosses(Network* n)

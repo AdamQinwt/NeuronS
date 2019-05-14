@@ -219,7 +219,7 @@ void bpFC(struct _Neuron* n)
 	n->count++;
 	FORFROM0STEP1(j, n->info.fc.out)
 	{
-		d = -n->dactivate(n->data.d11.out[j])*n->data.d11.dout[j];
+		d = n->dactivate(n->data.d11.out[j])*n->data.d11.dout[j];
 		n->arg.fc.grad.bias[j] = d;
 		CONTINUE_IF_NEAR_ZERO(d);
 		FORFROM0STEP1(i, n->info.fc.in)
@@ -280,8 +280,16 @@ void SetFC(Neuron* n,double learningRate,char* act)
 	//n->type = FC;
 	n->run = runFC;
 	n->bp = bpFC;
-	n->activate = sigmoid;
-	n->dactivate = dsigmoid;
+	if (!strcmp(act, "sigmoid"))
+	{
+		n->activate = sigmoid;
+		n->dactivate = dsigmoid;
+	}
+	else if (!strcmp(act, "relu"))
+	{
+		n->activate = relu;
+		n->dactivate = drelu;
+	}
 	n->dataOffset = 0;
 	n->needFree[0] = 0;
 	n->needFree[1] = 0;

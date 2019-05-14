@@ -34,6 +34,7 @@ void BFGS_Optimizer(Network* n);
 void Newton_Optimizer(Network* n);
 void Delta_Bar_Delta(Network* n);
 void Normalized_Initialization(Network* n);
+void Uniform_Initialization(Network* n);
 void Set(Network* n);
 void Dtor(Network* n);
 void none(Network* n);
@@ -42,5 +43,5 @@ void ResetLosses(Network* n);
 double SquareLoss(struct _Network*,int indx);
 double CrossEntropyLoss(struct _Network* n, int indx);
 void DSquareloss(struct _Network*,int indx);
-double DCrossEntropyLoss(struct _Network* n, int indx);
+void DCrossEntropyLoss(struct _Network* n, int indx);
 #endif
