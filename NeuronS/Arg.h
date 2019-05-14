@@ -30,4 +30,9 @@ typedef union _Arg
 		Conv_Arg shadow;	//影子，用于一些训练算法
 	}conv;
 }Arg;
+typedef union _SimpleArg
+{
+	FC_Arg fc;
+	Conv_Arg conv;
+}SimpleArg;	//只含有一个版本的数据
 #endif

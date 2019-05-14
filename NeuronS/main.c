@@ -40,6 +40,18 @@ main()
 	p->Optimizer = RMSProp_Optimizer;
 	p->extraArg[RMSPROP_1] = 0.0000001;
 	p->extraArg[RMSPROP_2] = 0.3;
+	//Ê¹ÓÃAdam
+	/*
+	p->Optimizer = Adam_Optimizer;
+	p->extraArg[ADAM_DELTA] = 1e-8;
+	p->extraArg[ADAM_EPSILON] = 0.001;
+	p->extraArg[ADAM_RO1] = 0.9;
+	p->extraArg[ADAM_RO2] = 0.999;
+	p->extraArg[ADAM_RO1T] = p->extraArg[ADAM_RO1];
+	p->extraArg[ADAM_RO2T] = p->extraArg[ADAM_RO2];
+	p->neurons[0].extraArgCount = 1;
+	p->neurons[1].extraArgCount = 1;
+	*/
 	Set(p);
 	InitArgs(p);
 	Connect(p->neurons, p->neurons+1);

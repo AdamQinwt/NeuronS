@@ -163,7 +163,7 @@ void _RMSProp_Optimizer_FC(Neuron* n, double delta,double ro)
 			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.grad.bias[j] /= n->count;
+				n->arg.fc.grad.weight[i][j] /= n->count;
 				n->arg.fc.shadow.weight[i][j] = ro*n->arg.fc.shadow.weight[i][j]+(1-ro)*n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
 				n->arg.fc.delta.weight[i][j] = -n->arg.fc.grad.weight[i][j] * (n->learningRate / sqrt(n->arg.fc.shadow.weight[i][j])+delta);
 				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
@@ -192,25 +192,26 @@ void RMSProp_Optimizer(Network* n)
 		n->neurons[num].count = 0;
 	}
 }
-void _Adam_Optimizer_FC(Neuron* n, double delta, double ro1, double ro2, double epsilon)
+void _Adam_Optimizer_FC(Neuron* n, double delta, double ro1, double ro2,double ro1t,double ro2t, double epsilon)
 {
-	//未完成，需要改变结构，加入一个参数的保留影子（用于二阶矩偏差）
-	//一阶
-	//
+	//改变结构，加入一个参数的保留影子（用于一阶矩偏差s）此处为n->extraArg[0]
+	//二阶r存入shadow中
 	int i, j;
 	if (n->count == 1)
 	{
 		FORFROM0STEP1(j, n->info.fc.out)
 		{
-			n->arg.fc.shadow.bias[j] += n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
-			n->arg.fc.delta.bias[j] = -n->arg.fc.grad.bias[j] * (n->learningRate / (delta + sqrt(n->arg.fc.shadow.bias[j])));
+			n->arg.fc.shadow.bias[j] = ro2* n->arg.fc.shadow.bias[j]+(1-ro2)*n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
+			n->extraArg[0].fc.bias[j] = ro1 * n->extraArg[0].fc.bias[j] + (1 - ro1)*n->arg.fc.grad.bias[j];
+			n->arg.fc.delta.bias[j] = -epsilon * n->extraArg[0].fc.bias[j] / (1 - ro1t) / (sqrt(n->arg.fc.shadow.bias[j] / (1 - ro2t)) + delta);
 			n->arg.fc.original.bias[j] += n->arg.fc.delta.bias[j];
 			n->arg.fc.grad.bias[j] = 0;
 			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.shadow.weight[i][j] += n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
-				n->arg.fc.delta.weight[i][j] = -n->arg.fc.grad.weight[i][j] * (n->learningRate / (delta + sqrt(n->arg.fc.shadow.weight[i][j])));
+				n->arg.fc.shadow.weight[i][j] = ro2 * n->arg.fc.shadow.weight[i][j] + (1 - ro2)*n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
+				n->extraArg[0].fc.weight[i][j] = ro1 * n->extraArg[0].fc.weight[i][j] + (1 - ro1)*n->arg.fc.grad.weight[i][j];
+				n->arg.fc.delta.weight[i][j] = -epsilon * n->extraArg[0].fc.weight[i][j] / (1 - ro1t) / (sqrt(n->arg.fc.shadow.weight[i][j] / (1 - ro2t)) + delta);
 				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
 				n->arg.fc.grad.weight[i][j] = 0;
 			}
@@ -221,23 +222,25 @@ void _Adam_Optimizer_FC(Neuron* n, double delta, double ro1, double ro2, double 
 		FORFROM0STEP1(j, n->info.fc.out)
 		{
 			n->arg.fc.grad.bias[j] /= n->count;
-			n->arg.fc.shadow.bias[j] = ro * n->arg.fc.shadow.bias[j] + (1 - ro)*n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
-			n->arg.fc.delta.bias[j] = -n->arg.fc.grad.bias[j] * (n->learningRate / sqrt(n->arg.fc.shadow.bias[j] + delta));
+			n->arg.fc.shadow.bias[j] = ro2 * n->arg.fc.shadow.bias[j] + (1 - ro2)*n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
+			n->extraArg[0].fc.bias[j] = ro1 * n->extraArg[0].fc.bias[j] + (1 - ro1)*n->arg.fc.grad.bias[j];
+			n->arg.fc.delta.bias[j] = -epsilon * n->extraArg[0].fc.bias[j] / (1 - ro1t) / (sqrt(n->arg.fc.shadow.bias[j] / (1 - ro2t)) + delta);
 			n->arg.fc.original.bias[j] += n->arg.fc.delta.bias[j];
 			n->arg.fc.grad.bias[j] = 0;
 			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.grad.bias[j] /= n->count;
-				n->arg.fc.shadow.weight[i][j] = ro * n->arg.fc.shadow.weight[i][j] + (1 - ro)*n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
-				n->arg.fc.delta.weight[i][j] = -n->arg.fc.grad.weight[i][j] * (n->learningRate / sqrt(n->arg.fc.shadow.weight[i][j]) + delta);
+				n->arg.fc.grad.weight[i][j] /= n->count;
+				n->arg.fc.shadow.weight[i][j] = ro2 * n->arg.fc.shadow.weight[i][j] + (1 - ro2)*n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
+				n->extraArg[0].fc.weight[i][j] = ro1 * n->extraArg[0].fc.weight[i][j] + (1 - ro1)*n->arg.fc.grad.weight[i][j];
+				n->arg.fc.delta.weight[i][j] = -epsilon * n->extraArg[0].fc.weight[i][j] / (1 - ro1t) / (sqrt(n->arg.fc.shadow.weight[i][j] / (1 - ro2t)) + delta);
 				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
 				n->arg.fc.grad.weight[i][j] = 0;
 			}
 		}
 	}
 }
-void _Adam_Optimizer_CONV(Neuron* n, double delta, double ro1, double ro2, double epsilon)
+void _Adam_Optimizer_CONV(Neuron* n, double delta, double ro1, double ro2, double ro1t, double ro2t, double epsilon)
 {
 	//
 }
@@ -251,15 +254,15 @@ void Adam_Optimizer(Network* n)
 	{
 		switch (n->neurons[num].type)
 		{
-		case FC: _Adam_Optimizer_FC(n->neurons + num, n->extraArg[ADAM_DELTA], n->extraArg[ADAM_RO1], n->extraArg[ADAM_RO2], n->extraArg[ADAM_EPSILON]); break;
-		case CONV: _Adam_Optimizer_CONV(n->neurons + num, n->extraArg[ADAM_DELTA], n->extraArg[ADAM_RO1], n->extraArg[ADAM_RO2], n->extraArg[ADAM_EPSILON]); break;
+		case FC: _Adam_Optimizer_FC(n->neurons + num, n->extraArg[ADAM_DELTA], n->extraArg[ADAM_RO1], n->extraArg[ADAM_RO2], n->extraArg[ADAM_RO1T], n->extraArg[ADAM_RO2T], n->extraArg[ADAM_EPSILON]); break;
+		case CONV: _Adam_Optimizer_CONV(n->neurons + num, n->extraArg[ADAM_DELTA], n->extraArg[ADAM_RO1], n->extraArg[ADAM_RO2], n->extraArg[ADAM_RO1T], n->extraArg[ADAM_RO2T], n->extraArg[ADAM_EPSILON]); break;
 		default:
 			break;
 		}
 		n->neurons[num].count = 0;
 	}
-	n->extraArg[ADAM_RO1] *= n->extraArg[ADAM_RO1];
-	n->extraArg[ADAM_RO2] *= n->extraArg[ADAM_RO2];
+	n->extraArg[ADAM_RO1T] *= n->extraArg[ADAM_RO1];
+	n->extraArg[ADAM_RO2T] *= n->extraArg[ADAM_RO2];
 }
 void _Normalized_Initialization_FC(Neuron* n,double absRange)
 {

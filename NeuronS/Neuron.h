@@ -11,6 +11,8 @@ typedef struct _Neuron
 	Data data;
 	int dataOffset;	//data中已分配的数量（最高维）
 	Info info;
+	int extraArgCount;	//额外存储的与参数关联的数据量（如一阶矩等等）的个数
+	SimpleArg* extraArg;	//额外存储的与参数关联的数据量（如一阶矩等等）
 	int count;	//已训练数据数
 	double(*activate)(double);
 	double(*dactivate)(double);

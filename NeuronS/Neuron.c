@@ -277,6 +277,7 @@ void bpAveragePool(struct _Neuron* n);
 void bpSoftmax(struct _Neuron* n);
 void SetFC(Neuron* n,double learningRate,char* act,char* needAlloc)
 {
+	int i;
 	//n->type = FC;
 	n->run = runFC;
 	n->bp = bpFC;
@@ -311,9 +312,25 @@ void SetFC(Neuron* n,double learningRate,char* act,char* needAlloc)
 	RSD(n->arg.fc.grad.bias, n->info.fc.out);
 	RSD(n->arg.fc.shadow.bias, n->info.fc.out);
 	RSD(n->arg.fc.delta.bias, n->info.fc.out);
+	if (n->extraArgCount)
+	{
+		//开辟额外参数空间
+		n->extraArg = MLN(SimpleArg, n->extraArgCount);
+		FORFROM0STEP1(i, n->extraArgCount)
+		{
+			n->extraArg[i].fc.bias = MLN(double, n->info.fc.out);
+			RSD(n->extraArg[i].fc.bias, n->info.fc.out);
+			n->extraArg[i].fc.weight = new2dDoubleArray(n->info.fc.in, n->info.fc.out);
+		}
+	}
+	else
+	{
+		n->extraArg = NULL;
+	}
 }
 void DestroyFC(Neuron* n)
 {
+	int i;
 	//destroy arg
 	destroy2dDoubleArray(n->arg.fc.original.weight,n->info.fc.in);
 	FREE(n->arg.fc.original.bias);
@@ -323,6 +340,12 @@ void DestroyFC(Neuron* n)
 	FREE(n->arg.fc.grad.bias);
 	destroy2dDoubleArray(n->arg.fc.shadow.weight, n->info.fc.in);
 	FREE(n->arg.fc.shadow.bias);
+	FORFROM0STEP1(i, n->extraArgCount)
+	{
+		destroy2dDoubleArray(n->extraArg[i].fc.weight, n->info.fc.in);
+		FREE(n->extraArg[i].fc.bias);
+	}
+	FREE(n->extraArg);
 	//destroy data
 	if (n->needFree[0])
 	{
