@@ -56,13 +56,14 @@ void runFC(struct _Neuron* n)
 		for (i = 0; i < n->info.fc.in; i++)
 		{
 			t1 = n->data.d11.in[i];
-			t2 = n->arg.fc.original.weight[i][j];
 			CONTINUE_IF_NEAR_ZERO(t1);
+			t2 = n->arg.fc.original.weight[i][j];
 			CONTINUE_IF_NEAR_ZERO(t2);
 			n->data.d11.out[j] += n->data.d11.in[i]* n->arg.fc.original.weight[i][j];
 		}
 		n->data.d11.out[j] = n->activate(n->data.d11.out[j] + n->arg.fc.original.bias[j]);
 	}
+	//print1dArray(n->data.d11.out, j);
 }
 void runConv(struct _Neuron* n)
 {
@@ -218,7 +219,7 @@ void bpFC(struct _Neuron* n)
 	n->count++;
 	FORFROM0STEP1(j, n->info.fc.out)
 	{
-		d = n->dactivate(n->data.d11.out[j])*n->data.d11.dout[j];
+		d = -n->dactivate(n->data.d11.out[j])*n->data.d11.dout[j];
 		n->arg.fc.grad.bias[j] = d;
 		CONTINUE_IF_NEAR_ZERO(d);
 		FORFROM0STEP1(i, n->info.fc.in)
@@ -290,12 +291,15 @@ void SetFC(Neuron* n,double learningRate,char* act)
 	n->dimension[1] = 1;
 	n->learningRate = learningRate;
 	n->momentum = 0;
+	n->count = 0;
 	n->arg.fc.original.bias = MLN(double, n->info.fc.out);
 	n->arg.fc.grad.bias = MLN(double, n->info.fc.out);
 	n->arg.fc.delta.bias = MLN(double, n->info.fc.out);
+	n->arg.fc.shadow.bias = NULL;
 	n->arg.fc.original.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
 	n->arg.fc.grad.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
 	n->arg.fc.delta.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
+	n->arg.fc.shadow.weight = NULL;
 }
 void DestroyFC(Neuron* n)
 {

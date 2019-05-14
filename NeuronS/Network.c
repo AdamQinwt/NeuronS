@@ -1,5 +1,4 @@
 #include"Network.h"
-#include"Globals.h"
 void _SGD_Optimizer_FC(Neuron* n)
 {
 	int i, j;
@@ -71,6 +70,7 @@ void _Normalized_Initialization_FC(Neuron* n,double absRange)
 	FORFROM0STEP1(i, n->info.fc.in)
 	{
 		assignRandomDoubleArray(n->arg.fc.original.weight[i], n->info.fc.out, absRange);
+		print1dArray(n->arg.fc.original.weight[i], n->info.fc.out);
 	}
 	assignZeroDoubleArray(n->arg.fc.original.bias, n->info.fc.out);
 }
@@ -110,25 +110,15 @@ void run(Network* n)
 	int i;
 	FORFROM0STEP1(i, n->number)
 	{
-		switch (n->neurons[i].type)
-		{
-		case FC:runFC(n->neurons + i); break;
-		default:
-			break;
-		}
+		n->neurons[i].run(n->neurons + i);
 	}
 }
 void bp(Network* n)
 {
 	int i;
-	for(i=n->number-1;i>-1;i--)
+	for(i=n->number-1;i>=0;i--)
 	{
-		switch (n->neurons[i].type)
-		{
-		case FC:bpFC(n->neurons + i); break;
-		default:
-			break;
-		}
+		n->neurons[i].bp(n->neurons+i);
 	}
 }
 void Set(Network* n)
@@ -144,11 +134,21 @@ void Set(Network* n)
 		}
 	}
 	//反向输入空间连接，输出连接，输出偏差连接
-	
+	n->dx = MLD(n->neurons[0].info.fc.in);
+	n->neurons[0].data.d11.din = n->dx;
+	Neuron* last = n->neurons+n->number - 1;
+	n->out = MLD(last->info.fc.out);
+	last->data.d11.dout = MLD(last->info.fc.out);
+	last->needFree[1] = 1;
+	last->data.d11.out = n->out;
 }
 void Dtor(Network* n)
 {
 	//反向输入空间释放，输出释放，输出偏差释放
+	FREE(n->neurons[0].data.d11.din);
+	Neuron* last = n->neurons + n->number - 1;
+	//FREE(n->out);
+	FREE(last->data.d11.dout);
 	int i;
 	FORFROM0STEP1(i, n->number)
 	{
@@ -165,6 +165,7 @@ void Dtor(Network* n)
 Network* newNetwork(char* name,int number, int batch, int il, int ih, int iw,int ol, int oh, int ow)
 {
 	Network* n = MLC(Network);
+	strcpy(n->name, name);
 	n->number = number;
 	n->batch = batch;
 	n->il = il;
@@ -176,13 +177,15 @@ Network* newNetwork(char* name,int number, int batch, int il, int ih, int iw,int
 	n->neurons = MLN(Neuron, n->number);
 	//n->LearningRateAdjustment = none;
 	//n->needAlloc[ORIGINAL] = 1;
-	n->Loss = SquareLoss;
-	n->Dloss = DSquareloss;
+	//n->Loss = SquareLoss;
+	//n->Dloss = DSquareloss;
+	n->Loss = CrossEntropyLoss;
+	n->Dloss = DCrossEntropyLoss;
 	n->trainingStep = 0;
 	n->InitNetworkArgs = Normalized_Initialization;
 	n->LearningRateAdjustment = none;
 	n->Optimizer = SGD_Optimizer;
-	//开辟输入输出空间、答案空间、反向输入空间
+	//开辟输入输出空间、答案空间（先在外界完成）
 	return n;
 }
 int train(Network* n, int count, double thresh, FILE* log)
@@ -198,23 +201,35 @@ int train(Network* n, int count, double thresh, FILE* log)
 			n->neurons[0].data.d11.in = n->x[b];
 			//前向
 			run(n);
-			//后向
-			bp(n);
+			//print1dArray(n->out, n->ow);
 			//计算误差
 			n->Loss(n, b);
+			n->Dloss(n, b);
+			//后向
+			bp(n);
 		}
 		//优化
 		n->Optimizer(n);
 		//输出结果
-		if(!(n->trainingStep&7)) fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
+		//if(!(n->trainingStep&0xff)) 
+		fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
 		//判断误差
 		if (n->loss < thresh)
 		{
 			//完成
-			fprintf(log, "Complete!", n->trainingStep, n->loss);
+			fprintf(log, "Complete!\n");
 			break;
 		}
 	}
+	FORFROM0STEP1(b, n->batch)
+	{
+		//设置输入
+		n->neurons[0].data.d11.in = n->x[b];
+		//前向
+		run(n);
+		print1dArray(n->out, n->ow);
+	}
+	return n->trainingStep;
 }
 void none(Network* n) 
 {
@@ -226,22 +241,43 @@ double SquareLoss(struct _Network* n,int indx)
 	double tmp,sum=0;
 	FORFROM0STEP1(k, n->ow)
 	{
-		tmp = n->neurons[n->number - 1].data.d11.out[k] - n->y[indx][k];
+		tmp = n->out[k] - n->y[indx][k];
 		sum += tmp * tmp;
 	}
-	n->loss += sum/n->ow;
+	n->loss += sum/n->batch;
+	return n->loss;
+}
+double CrossEntropyLoss(struct _Network* n, int indx)
+{
+	int k;
+	double sum = 0;
+	FORFROM0STEP1(k, n->ow)
+	{
+		sum -= n->y[indx][k] * log(n->out[k]);
+	}
+	n->loss += sum / n->batch;
 	return n->loss;
 }
 void DSquareloss(struct _Network* n, int indx)
 {
 	int i;
-	double d = ((double)2) / n->ow;
+	double d = ((double)2) / n->batch;
 	FORFROM0STEP1(i, n->ow)
 	{
-		n->neurons[n->number - 1].data.d11.dout[i] += d*(n->neurons[n->number - 1].data.d11.out[i] - n->y[indx][i]);
+		n->neurons[n->number - 1].data.d11.dout[i] += d*(n->out[i] - n->y[indx][i]);
 	}
 }
-void ResetLosses(struct _Network* n)
+double DCrossEntropyLoss(struct _Network* n, int indx)
+{
+	int i;
+	//double d = ((double)2) / n->batch;
+	FORFROM0STEP1(i, n->ow)
+	{
+		CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+		n->neurons[n->number - 1].data.d11.dout[i] += n->y[indx][i]/n->out[i];
+	}
+}
+void ResetLosses(Network* n)
 {
 	int i;
 	n->loss = 0;

@@ -1,15 +1,15 @@
 #include"Info.h"
-#include"Globals.h"
+#include<stdlib.h>
 void AppendToChain4Int(ChainList4Int* list, int _ax, int _ay, int _bx, int _by)
 {
 	if (list->tail)
 	{
-		list->tail->next = MLC(ChainNode4Int);
+		list->tail->next = (ChainNode4Int*)malloc(sizeof(ChainNode4Int));
 		list->tail = list->tail->next;
 	}
 	else
 	{
-		list->head = MLC(ChainNode4Int);
+		list->head = (ChainNode4Int*)malloc(sizeof(ChainNode4Int));
 		list->tail = list->head;
 	}
 	list->tail->ax = _ax;

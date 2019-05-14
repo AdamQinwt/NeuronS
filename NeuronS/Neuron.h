@@ -3,9 +3,6 @@
 #include"Arg.h"
 #include"Data.h"
 #include"Info.h"
-#ifndef NULL
-#define NULL 0
-#endif
 typedef enum _NeuronType {NONE=0,FC=1,CONV=2,MAX_POOL=3,AVERAGE_POOL=4,SOFTMAX=5}NeuronType;
 typedef struct _Neuron
 {
@@ -30,6 +27,7 @@ void runConv(struct _Neuron* n);
 void runMaxPool(struct _Neuron* n);
 void runAveragePool(struct _Neuron* n);
 void runSoftmax(struct _Neuron* n);
+void bpFC(struct _Neuron* n);
 void SetFC(Neuron* n, double learningRate, char* act);
 void DestroyFC(Neuron* n);
 #endif

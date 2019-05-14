@@ -1,7 +1,7 @@
 #include"Globals.h"
 double**** new4dDoubleArray(int d, int l, int h, int w)
 {
-	int i, j,k;
+	int i, j, k;
 	int t1 = w * sizeof(double);
 	int t2 = h * sizeof(double*);
 	int t3 = l * sizeof(double***);
@@ -38,7 +38,7 @@ double*** new3dDoubleArray(int l, int h, int w)
 }
 double** new2dDoubleArray(int h, int w)
 {
-	int i, j;
+	int i;
 	int t = w * sizeof(double);
 	double** r = MLN(double*, h);
 	for (i = 0; i < h; i++)
@@ -46,12 +46,6 @@ double** new2dDoubleArray(int h, int w)
 		r[i] = (double*)malloc(t);
 	}
 	return r;
-}
-void destroy2dDoubleArray(double** p, int h)
-{
-	if (!p) return;
-	for (h--; h>=0; h--) FREE(p[h]);
-	FREE(p);
 }
 double*** new3dDoubleArrayFrom1d(int l, int h, int w, int offset, double* p)
 {
@@ -68,6 +62,17 @@ double*** new3dDoubleArrayFrom1d(int l, int h, int w, int offset, double* p)
 		}
 	}
 	return r;
+}
+void destroy2dDoubleArray(double** p, int h)
+{
+	if (!p) return;
+	int i;
+	for(i=0;i<h;i++)
+	{
+		FREE(p[i]);
+		//FREE(p[h]);
+	}
+	FREE(p);
 }
 void destroy3dDoubleArray(double*** p, int l, int h)
 {
@@ -115,30 +120,120 @@ int argmax(double* a, int l)
 	}
 	return mi;
 }
-inline double randomDouble(double absRange)
+double randomDouble(double absRange)
 {
-	double r = (rand() & 0xffff)-0x7fff;
-	r /= (double)0x8000;
+	double r = (rand() & 0xfff)-0x7ff;
+	r /= (double)0x800;
 	return r*absRange;
 }
-inline void assignRandomDoubleArray(double* a, int len, double absrange)
+void assignRandomDoubleArray(double* a, int len, double absrange)
 {
 	int i;
 	FORFROM0STEP1(i, len) a[i] = randomDouble(absrange);
 }
-inline void assignZeroDoubleArray(double* a, int len)
+void assignZeroDoubleArray(double* a, int len)
 {
 	int i;
-	FORFROM0STEP1(i, len)
+	for(i=0;i<len;i++)
 	{
 		a[i] = 0;
 	}
 }
-inline double sigmoid(double x)
+double sigmoid(double x)
 {
 	return 1 / (1 + exp(-x));
 }
-inline double dsigmoid(double y)
+double dsigmoid(double y)
 {
 	return y * (1 - y);
+}
+void print1dArray(double* a, int w)
+{
+	int i;
+	for (i = 0; i < w; i++) printf("%.3lf\t", a[i]);
+	putchar('\n');
+}
+void print2dArray(double** a, int h, int w)
+{
+	int i,j;
+	for (i = 0; i < h; i++)
+	{
+		for (j = 0; j < w; j++) printf("%.3lf\t", a[i][j]);
+	}
+}
+void print3dArray(double*** a, int l, int h, int w);
+void print4dArray(double**** a, int k, int l, int h, int w);
+void write1dArray(FILE* fp,double* a, int w)
+{
+	fwrite(a, sizeof(double), w, fp);
+}
+void write2dArray(FILE* fp, double** a, int h, int w)
+{
+	int i;
+	for (i = 0; i < h; i++)
+	{
+		fwrite(a[i], sizeof(double), w, fp);
+	}
+}
+void write3dArray(FILE* fp, double*** a, int l, int h, int w)
+{
+	int i,j;
+	for (i = 0; i < l; i++)
+	{
+		for (j = 0; j < h; j++)
+		{
+			fwrite(a[i][j], sizeof(double), w, fp);
+		}
+	}
+}
+void write4dArray(FILE* fp, double**** a, int k, int l, int h, int w)
+{
+	int i, j,m;
+	for (m = 0; m < k; m++)
+	{
+		for (i = 0; i < l; i++)
+		{
+			for (j = 0; j < h; j++)
+			{
+				fwrite(a[m][i][j], sizeof(double), w, fp);
+			}
+		}
+	}
+}
+void read1dArray(FILE* fp, double* a, int w)
+{
+	fread(a, sizeof(double), w, fp);
+}
+void read2dArray(FILE* fp, double** a, int h, int w)
+{
+	int i;
+	for (i = 0; i < h; i++)
+	{
+		fread(a[i], sizeof(double), w, fp);
+	}
+}
+void read3dArray(FILE* fp, double*** a, int l, int h, int w)
+{
+	int i, j;
+	for (i = 0; i < l; i++)
+	{
+		for (j = 0; j < h; j++)
+		{
+			fread(a[i][j], sizeof(double), w, fp);
+		}
+	}
+}
+void read4dArray(FILE* fp, double**** a, int k, int l, int h, int w)
+{
+	int i, j, m;
+	for (m = 0; m < k; m++)
+	{
+		for (i = 0; i < l; i++)
+		{
+			for (j = 0; j < h; j++)
+			{
+				fread(a[m][i][j], sizeof(double), w, fp);
+			}
+		}
+	}
 }
