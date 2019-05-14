@@ -44,6 +44,7 @@ double** new2dDoubleArray(int h, int w)
 	for (i = 0; i < h; i++)
 	{
 		r[i] = (double*)malloc(t);
+		memset(r[i],0, t);
 	}
 	return r;
 }

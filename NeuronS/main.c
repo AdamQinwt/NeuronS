@@ -32,7 +32,7 @@ main()
 	Set(p);
 	InitArgs(p);
 	Connect(p->neurons, p->neurons+1);
-	train(p, 1000, 0.01, stdout);
+	train(p, 10000, 0.01, stdout);
 	Dtor(p);
 	destroy2dDoubleArray(x, 4);
 	destroy2dDoubleArray(y, 4);

@@ -220,13 +220,13 @@ void bpFC(struct _Neuron* n)
 	FORFROM0STEP1(j, n->info.fc.out)
 	{
 		d = n->dactivate(n->data.d11.out[j])*n->data.d11.dout[j];
-		n->arg.fc.grad.bias[j] = d;
+		n->arg.fc.grad.bias[j] += d;
 		CONTINUE_IF_NEAR_ZERO(d);
 		FORFROM0STEP1(i, n->info.fc.in)
 		{
 			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.original.weight[i][j]);
 			n->data.d11.din[i] += d * n->arg.fc.original.weight[i][j];
-			n->arg.fc.grad.weight[i][j] = d * n->data.d11.in[i];
+			n->arg.fc.grad.weight[i][j] += d * n->data.d11.in[i];
 		}
 	}
 }
@@ -302,6 +302,7 @@ void SetFC(Neuron* n,double learningRate,char* act)
 	n->count = 0;
 	n->arg.fc.original.bias = MLN(double, n->info.fc.out);
 	n->arg.fc.grad.bias = MLN(double, n->info.fc.out);
+	RSD(n->arg.fc.grad.bias, n->info.fc.out);
 	n->arg.fc.delta.bias = MLN(double, n->info.fc.out);
 	n->arg.fc.shadow.bias = NULL;
 	n->arg.fc.original.weight = new2dDoubleArray(n->info.fc.in,n->info.fc.out);
