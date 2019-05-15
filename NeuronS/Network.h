@@ -24,6 +24,9 @@ typedef struct _Network
 	int number;	//神经元数量
 	Neuron* neurons;	//神经元数组
 	int batch;	//batch size
+	int batchCount;	//how many batches are there
+	int batchRemainder;	//the size of the last batch
+	FILE* dataSet;
 	int trainingStep;	//已训练次数（用于学习率调整）
 	void(*Optimizer)(struct _Network*);		//优化算法
 	double(*Loss)(struct _Network*,int indx);		//损失函数
@@ -33,7 +36,7 @@ typedef struct _Network
 	double loss;	//总输出损失
 	char needAlloc[OPTIONAL_COUNT];	//对应的空间是否需要开辟
 }Network;
-Network* newNetwork(char* name, int number, int batch, int il, int ih, int iw, int ol, int oh, int ow);
+Network* newNetwork(char* name,int il, int ih, int iw, int ol, int oh, int ow);
 int train(Network* n, int count, double thresh, FILE* log);
 void run(Network* n);
 void bp(Network* n);
@@ -59,4 +62,6 @@ void DCrossEntropyLoss(struct _Network* n, int indx);
 void RecordArgs(Network* n);
 void SaveArgs(Network* n,FILE* fp);
 void ReadArgs(Network* n,FILE* fp);
+void ReadHeader(Network* n);
+void ReadData(Network* n, int num);
 #endif

@@ -38,16 +38,46 @@ void _SGD_Optimizer_FC(Neuron* n)
 void _SGD_Optimizer_Conv(Neuron* n)
 {
 	int i, j, k, l;
-	FORFROM0STEP1(k, n->info.conv.ol)
+	if (n->count == 1)
 	{
-		n->arg.conv.delta.bias[k] = n->arg.conv.grad.bias[k];
-		FORFROM0STEP1(l, n->info.conv.il)
+		FORFROM0STEP1(k, n->info.conv.ol)
 		{
-			FORFROM0STEP1(i, n->info.conv.ph)
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate;
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.fc.grad.bias[k] = 0;
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
+			FORFROM0STEP1(l, n->info.conv.il)
 			{
-				FORFROM0STEP1(j, n->info.conv.pw)
+				FORFROM0STEP1(i, n->info.conv.kh)
 				{
-					n->arg.conv.delta.weight[k][l][i][j] = n->arg.conv.grad.weight[k][l][i][j];
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * n->learningRate;
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
+	else //(n->count >= 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate/n->count;
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.fc.grad.bias[k] = 0;
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * n->learningRate / n->count;
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
 				}
 			}
 		}
@@ -378,19 +408,23 @@ void Dtor(Network* n)
 	FREE(n->neurons);
 	FREE(n);
 }
-Network* newNetwork(char* name,int number, int batch, int il, int ih, int iw,int ol, int oh, int ow)
+Network* newNetwork(char* name,int il, int ih, int iw,int ol, int oh, int ow)
 {
 	Network* n = MLC(Network);
 	strcpy(n->name, name);
-	n->number = number;
-	n->batch = batch;
+	n->batch = 0;
+	n->batchCount = 0;
+	n->batchRemainder = 0;
 	n->il = il;
 	n->ih = ih;
 	n->iw = iw;
 	n->ol = ol;
 	n->oh = oh;
 	n->ow = ow;
-	n->neurons = MLN(Neuron, n->number);
+	n->x = NULL;
+	n->y = NULL;
+	n->dx = NULL;
+	n->out = NULL;
 	//n->LearningRateAdjustment = none;
 	//n->needAlloc[ORIGINAL] = 1;
 	//n->Loss = SquareLoss;
@@ -407,45 +441,88 @@ Network* newNetwork(char* name,int number, int batch, int il, int ih, int iw,int
 }
 int train(Network* n, int count, double thresh, FILE* log)
 {
-	int b;
+	int b,num,rem;
 	//初始化过程
-	FORFROM0STEP1(n->trainingStep, count)
+	//读入数据文件头
+	ReadHeader(n);
+	if (n->batchCount == 1)
 	{
-		ResetLosses(n);
+		ReadData(n,n->batch);
+		FORFROM0STEP1(n->trainingStep, count)
+		{
+			ResetLosses(n);
+			FORFROM0STEP1(b, n->batch)
+			{
+				//设置输入
+				n->neurons[0].data.d11.in = n->x[b];
+				//前向
+				run(n);
+				//print1dArray(n->out, n->ow);
+				//计算误差
+				n->Loss(n, b);
+				n->Dloss(n, b);
+				//后向
+				bp(n);
+			}
+			//优化
+			n->Optimizer(n);
+			//输出结果
+			//if(!(n->trainingStep&0xff)) 
+			fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
+			//判断误差
+			if (n->loss < thresh)
+			{
+				//完成
+				fprintf(log, "Complete!\n");
+				break;
+			}
+		}
 		FORFROM0STEP1(b, n->batch)
 		{
 			//设置输入
 			n->neurons[0].data.d11.in = n->x[b];
 			//前向
 			run(n);
-			//print1dArray(n->out, n->ow);
-			//计算误差
-			n->Loss(n, b);
-			n->Dloss(n, b);
-			//后向
-			bp(n);
-		}
-		//优化
-		n->Optimizer(n);
-		//输出结果
-		//if(!(n->trainingStep&0xff)) 
-		fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
-		//判断误差
-		if (n->loss < thresh)
-		{
-			//完成
-			fprintf(log, "Complete!\n");
-			break;
+			print1dArray(n->out, n->ow);
+			print1dArray(n->y[b], n->ow);
 		}
 	}
-	FORFROM0STEP1(b, n->batch)
+	else
 	{
-		//设置输入
-		n->neurons[0].data.d11.in = n->x[b];
-		//前向
-		run(n);
-		print1dArray(n->out, n->ow);
-		print1dArray(n->y[b], n->ow);
+		FORFROM0STEP1(n->trainingStep, count)
+		{
+			FORFROM0STEP1(num, n->batchCount)
+			{
+				rem = num==n->batchCount - 1 ? n->batchRemainder : n->batch;
+				ReadData(n,rem);
+				ResetLosses(n);
+				FORFROM0STEP1(b, rem)
+				{
+					//设置输入
+					n->neurons[0].data.d11.in = n->x[b];
+					//前向
+					run(n);
+					//print1dArray(n->out, n->ow);
+					//计算误差
+					n->Loss(n, b);
+					n->Dloss(n, b);
+					//后向
+					bp(n);
+				}
+				//优化
+				n->Optimizer(n);
+				//输出结果
+				//if(!(n->trainingStep&0xff)) 
+				fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
+				//判断误差
+				if (n->loss < thresh)
+				{
+					//完成
+					fprintf(log, "Complete!\n");
+					break;
+				}
+			}
+		}
 	}
 	return n->trainingStep;
 }
@@ -563,4 +640,50 @@ void RecordArgs(Network* n)
 	sprintf(fname, "%s/arg", n->name);
 	FILE* fp = fopen(fname, "wb");
 	if (fp) SaveArgs(n, fp);
+}
+void ReadHeader(Network* n)
+{
+	//数据文件为文本文件
+	//由调用者预先指定batch或batchCount，ReadData函数只负责分配输入输出空间并读入数据
+	//数据文件第一行为一个整数开头，标识数据集大小
+	//数据文件分隔符可为 ' ',',','\t','\r','\n'
+	int cnt;	//数据集大小
+	fscanf(n->dataSet, "%d", &cnt);
+	if (n->batch)
+	{
+		n->batchCount = cnt / n->batch;
+		n->batchRemainder = cnt % n->batch;
+		if (n->batchRemainder) n->batchCount++;
+	}
+	else if (n->batchCount)
+	{
+		n->batch = cnt / n->batchCount;
+		n->batchRemainder = cnt - n->batch*n->batchCount;
+		if (n->batchRemainder)
+		{
+			n->batch++;
+			n->batchCount = cnt / n->batch;
+			n->batchRemainder = cnt % n->batch;
+			if (n->batchRemainder) n->batchCount++;
+		}
+	}
+	//分配空间
+	//一维情况
+	if (!(n->x)) n->x = new2dDoubleArray(n->batch, n->iw);
+	if (!(n->y)) n->y = new2dDoubleArray(n->batch, n->ow);
+}
+void ReadData(Network* n,int num)
+{
+	int i, j;
+	FORFROM0STEP1(i, num)
+	{
+		FORFROM0STEP1(j, n->iw)
+		{
+			fscanf(n->dataSet, "%lf", n->x[i] + j);
+		}
+		FORFROM0STEP1(j, n->ow)
+		{
+			fscanf(n->dataSet, "%lf", n->y[i] + j);
+		}
+	}
 }

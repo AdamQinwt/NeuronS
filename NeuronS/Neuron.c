@@ -98,7 +98,7 @@ void runConv(struct _Neuron* n)
 						t2 = n->arg.conv.original.weight[k][l][tmp->by][tmp->bx];
 						CONTINUE_IF_NEAR_ZERO(t1);
 						CONTINUE_IF_NEAR_ZERO(t2);
-						n->data.d33.out[k][i][j] = n->data.d33.in[l][tmp->ay][tmp->ax]*n->arg.conv.original.weight[k][l][tmp->by][tmp->bx];
+						n->data.d33.out[k][i][j] += n->data.d33.in[l][tmp->ay][tmp->ax]*n->arg.conv.original.weight[k][l][tmp->by][tmp->bx];
 					}
 				}
 				n->data.d33.out[k][i][j] = n->activate(n->data.d33.out[k][i][j]);
@@ -154,43 +154,39 @@ void runMaxPool(struct _Neuron* n)
 }
 void runAveragePool(struct _Neuron* n)
 {
-	int i, j, l;
-	int mm, nn;
-	int m0, n0;
-	int x, y;	//池化计数变量
-	double w=1/n->info.conv.pairs[0][0].head->ax;
+	int i, j, k, l;
+	double t1, t2=n->info.conv.pairs[0][0].head->bx*n->info.conv.pairs[0][0].head->by;
+	t2 = 1 / t2;
 	ChainNode4Int* tmp;
-	m0 = -(n->info.conv.ph);
-	FORFROM0STEP1(i, n->info.conv.oh)
+	if (n->needClear[1])
 	{
-		n0 = -(n->info.conv.pw);
-		FORFROM0STEP1(j, n->info.conv.ow)
+		//clear outputs
+		FORFROM0STEP1(l, n->info.conv.ol)
 		{
-			tmp = n->info.conv.pairs[i][j].head;
-			FORFROM0STEP1(l, n->info.conv.ol)	//每一层
+			FORFROM0STEP1(i, n->info.conv.oh)
 			{
-				n->data.d33.out[l][i][j] = 0;
-				mm = m0;
-				FORFROM0STEP1(x, n->info.conv.kh)
+				FORFROM0STEP1(j, n->info.conv.ow)
 				{
-					if (mm < 0) continue;
-					if (mm >= n->info.conv.ih) break;
-					nn = n0;
-					FORFROM0STEP1(y, n->info.conv.kw)
-					{
-						if (nn < 0) continue;
-						if (nn >= n->info.conv.iw) break;
-						n->data.d33.out[l][i][j] += n->data.d33.in[l][mm][nn];
-						nn++;
-					}
-					mm++;
+					n->data.d33.out[l][i][j] = 0;
 				}
-				n->data.d33.out[l][i][j] *= w;
-				tmp = tmp->next;
 			}
-			n0 += n->info.conv.sw;
 		}
-		m0 += n->info.conv.sh;
+	}
+	FORFROM0STEP1(k, n->info.conv.ol)
+	{
+		FORFROM0STEP1(i, n->info.conv.oh)
+		{
+			FORFROM0STEP1(j, n->info.conv.ow)
+			{
+				FORCHAIN(tmp, n->info.conv.pairs[i][j])
+				{
+						t1 = n->data.d33.in[l][tmp->ay][tmp->ax];
+						CONTINUE_IF_NEAR_ZERO(t1);
+						n->data.d33.out[k][i][j] = n->data.d33.in[l][tmp->ay][tmp->ax];
+				}
+				n->data.d33.out[k][i][j] *= t2;
+			}
+		}
 	}
 }
 void runSoftmax(struct _Neuron* n)
@@ -272,8 +268,72 @@ void bpConv(struct _Neuron* n)
 		}
 	}
 }
-void bpMaxPool(struct _Neuron* n);
-void bpAveragePool(struct _Neuron* n);
+void bpMaxPool(struct _Neuron* n)
+{
+	int i, j, k, l;
+	double d;
+	ChainNode4Int* tmp;
+	if (n->needClear[0])
+	{
+		//clear dinputs
+		FORFROM0STEP1(l, n->info.conv.il)
+		{
+			FORFROM0STEP1(i, n->info.conv.ih)
+			{
+				FORFROM0STEP1(j, n->info.conv.iw)
+				{
+					n->data.d33.din[l][i][j] = 0;
+				}
+			}
+		}
+	}
+
+	FORFROM0STEP1(i, n->info.conv.oh)
+	{
+		FORFROM0STEP1(j, n->info.conv.ow)
+		{
+			tmp = n->info.conv.pairs[i][j].head;
+			FORFROM0STEP1(l, n->info.conv.ol)
+			{
+				tmp = tmp->next;
+				n->data.d33.din[l][tmp->ay][tmp->ax] += n->data.d33.dout[l][i][j];
+			}
+		}
+	}
+}
+void bpAveragePool(struct _Neuron* n)
+{
+	int i, j, k, l;
+	double d=n->info.conv.pairs[0][0].head->bx*n->info.conv.pairs[0][0].head->by;
+	ChainNode4Int* tmp;
+	if (n->needClear[0])
+	{
+		//clear dinputs
+		FORFROM0STEP1(l, n->info.conv.il)
+		{
+			FORFROM0STEP1(i, n->info.conv.ih)
+			{
+				FORFROM0STEP1(j, n->info.conv.iw)
+				{
+					n->data.d33.din[l][i][j] = 0;
+				}
+			}
+		}
+	}
+	FORFROM0STEP1(i, n->info.conv.oh)
+	{
+		FORFROM0STEP1(j, n->info.conv.ow)
+		{
+			FORCHAIN(tmp, n->info.conv.pairs[i][j])
+			{
+				FORFROM0STEP1(l, n->info.conv.ol)
+				{
+					n->data.d33.din[l][tmp->ay][tmp->ax] += n->data.d33.dout[l][i][j]*d;
+				}
+			}
+		}
+	}
+}
 void bpSoftmax(struct _Neuron* n);
 void SetFC(Neuron* n,double learningRate,char* act,char* needAlloc)
 {
