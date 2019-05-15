@@ -31,4 +31,7 @@ typedef union _Info
 	FC_Info fc;
 	Conv_Info conv;
 }Info;
+void SetPairsInInfo(Info* p);
+void AllocPairsInInfo(Info* p);
+void DestroyPairsInInfo(Info* p);
 #endif

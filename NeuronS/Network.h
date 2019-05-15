@@ -17,10 +17,10 @@ typedef struct _Network
 {
 	char name[50];	//名称
 	int il, ih, iw, ol, oh, ow;
-	double** x, *dx;
+	double**** x, ***dx;
 	double extraArg[EXTRACOUNT];	//用于优化器的额外参数表
-	double* out;	//实际运行输出
-	double** y;
+	double*** out;	//实际运行输出
+	double**** y;
 	int number;	//神经元数量
 	Neuron* neurons;	//神经元数组
 	int batch;	//batch size

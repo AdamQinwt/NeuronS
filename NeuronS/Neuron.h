@@ -30,6 +30,18 @@ void runMaxPool(struct _Neuron* n);
 void runAveragePool(struct _Neuron* n);
 void runSoftmax(struct _Neuron* n);
 void bpFC(struct _Neuron* n);
+void bpConv(struct _Neuron* n);
+void bpMaxPool(struct _Neuron* n);
+void bpAveragePool(struct _Neuron* n);
+void bpSoftmax(struct _Neuron* n);
 void SetFC(Neuron* n, double learningRate, char* act,char* needAlloc);
+void SetConv(Neuron* n, double learningRate, char* act,char* needAlloc);
+void SetMaxPool(Neuron* n);
+void SetAveragePool(Neuron* n);
+void SetSoftmax(Neuron* n);
 void DestroyFC(Neuron* n);
+void DestroyConv(Neuron* n);
+void DestroyMaxPool(Neuron* n);
+void DestroyAveragePool(Neuron* n);
+void DestroySoftmax(Neuron* n);
 #endif

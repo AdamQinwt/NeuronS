@@ -18,6 +18,8 @@ main()
 	p->needAlloc[GRAD] = 1;
 	p->needAlloc[DELTA] = 1;
 	p->needAlloc[SHADOW] = 1;
+	p->neurons[0].extraArgCount = 0;
+	p->neurons[1].extraArgCount = 0;
 	//Ê¹ÓÃAdaGrad
 	//p->Optimizer = AdaGrad_Optimizer;
 	//p->extraArg[ADAGRAD] = 0.00000001;

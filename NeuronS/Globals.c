@@ -15,6 +15,7 @@ double**** new4dDoubleArray(int d, int l, int h, int w)
 			for (j = 0; j < h; j++)
 			{
 				r[k][i][j] = (double*)malloc(t1);
+				memset(r[k][i][j], 0, t1);
 			}
 		}
 	}
@@ -32,6 +33,7 @@ double*** new3dDoubleArray(int l, int h, int w)
 		for (j = 0; j < h; j++)
 		{
 			r[i][j] = (double*)malloc(t1);
+			memset(r[i][j], 0, t1);
 		}
 	}
 	return r;
@@ -168,10 +170,36 @@ void print2dArray(double** a, int h, int w)
 	for (i = 0; i < h; i++)
 	{
 		for (j = 0; j < w; j++) printf("%.3lf\t", a[i][j]);
+		putchar('\n');
 	}
 }
-void print3dArray(double*** a, int l, int h, int w);
-void print4dArray(double**** a, int k, int l, int h, int w);
+void print3dArray(double*** a, int l, int h, int w)
+{
+	int i, j,k;
+	for (k = 0; k < l; k++)
+	{
+		for (i = 0; i < h; i++)
+		{
+			for (j = 0; j < w; j++) printf("%.3lf\t", a[k][i][j]);
+			putchar('\n');
+		}
+	}
+}
+void print4dArray(double**** a, int k, int l, int h, int w)
+{
+	int i, j, m,d;
+	for (d = 0; d < k; d++)
+	{
+		for (m = 0; m < l; m++)
+		{
+			for (i = 0; i < h; i++)
+			{
+				for (j = 0; j < w; j++) printf("%.3lf\t", a[d][m][i][j]);
+				putchar('\n');
+			}
+		}
+	}
+}
 void write1dArray(FILE* fp,double* a, int w)
 {
 	fwrite(a, sizeof(double), w, fp);

@@ -45,7 +45,7 @@ void _SGD_Optimizer_Conv(Neuron* n)
 			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate;
 			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
 			n->arg.fc.grad.bias[k] = 0;
-			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
 			FORFROM0STEP1(l, n->info.conv.il)
 			{
 				FORFROM0STEP1(i, n->info.conv.kh)
@@ -67,7 +67,7 @@ void _SGD_Optimizer_Conv(Neuron* n)
 			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate/n->count;
 			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
 			n->arg.fc.grad.bias[k] = 0;
-			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
 			FORFROM0STEP1(l, n->info.conv.il)
 			{
 				FORFROM0STEP1(i, n->info.conv.kh)
@@ -375,32 +375,63 @@ void Set(Network* n)
 		{
 		//case FC:SetFC(n->neurons + i, 0.3, (i==n->number-1)?"sigmoid":"relu"); break;
 		case FC:SetFC(n->neurons + i, 0.3, "sigmoid",n->needAlloc); break;
+		case CONV:SetConv(n->neurons + i, 0.3, "relu",n->needAlloc); break;
+		case MAX_POOL:SetMaxPool(n->neurons + i); break;
+		case AVERAGE_POOL:SetAveragePool(n->neurons + i); break;
+		case SOFTMAX:SetSoftmax(n->neurons + i); break;
 		default:
 			break;
 		}
 	}
 	//反向输入空间连接，输出连接，输出偏差连接
-	n->dx = MLD(n->neurons[0].info.fc.in);
-	n->neurons[0].data.d11.din = n->dx;
+
+	//n->dx = MLD(n->neurons[0].info.fc.in);
+	n->dx = new3dDoubleArray(n->il, n->ih, n->iw);
+	//n->out = MLD(last->info.fc.out);
+	n->out = new3dDoubleArray(n->ol, n->oh, n->ow);
+
+	//n->neurons[0].data.d11.din = n->dx;
+	if(n->neurons[0].dimension[0]==1) n->neurons[0].data.d11.din = n->dx[0][0];
+	else n->neurons[0].data.d33.din = n->dx;
+
 	Neuron* last = n->neurons+n->number - 1;
-	n->out = MLD(last->info.fc.out);
-	last->data.d11.dout = MLD(last->info.fc.out);
-	last->needFree[1] = 1;
-	last->data.d11.out = n->out;
+	if (last->dimension[1] == 1)
+	{
+		last->data.d11.out = n->out[0][0];
+		last->data.d11.dout = MLD(last->info.fc.out);
+	}
+	else
+	{
+		last->data.d33.out = n->out;
+		last->data.d33.dout = new3dDoubleArray(n->ol, n->oh, n->ow);
+	}
+	last->needFree[1] = 0;
 }
 void Dtor(Network* n)
 {
-	//反向输入空间释放，输出释放，输出偏差释放
-	FREE(n->neurons[0].data.d11.din);
+	//输入释放，反向输入空间释放，输出释放，输出偏差释放
+	destroy4dDoubleArray(n->x, n->batch,n->il, n->ih);
+	destroy4dDoubleArray(n->y, n->batch,n->ol, n->oh);
+	destroy3dDoubleArray(n->dx, n->il, n->ih);
+	destroy3dDoubleArray(n->out, n->ol, n->oh);
+	//FREE(n->neurons[0].data.d11.din);
 	Neuron* last = n->neurons + n->number - 1;
 	//FREE(n->out);
-	FREE(last->data.d11.dout);
+	if (last->dimension[1] == 1)
+	{
+		FREE(last->data.d11.dout);
+	}
+	else destroy3dDoubleArray(last->data.d33.dout, n->ol, n->oh);
 	int i;
 	FORFROM0STEP1(i, n->number)
 	{
 		switch (n->neurons[i].type)
 		{
 		case FC:DestroyFC(n->neurons + i); break;
+		case CONV:DestroyConv(n->neurons + i); break;
+		case MAX_POOL:DestroyMaxPool(n->neurons + i); break;
+		case AVERAGE_POOL:DestroyAveragePool(n->neurons + i); break;
+		case SOFTMAX:DestroySoftmax(n->neurons + i); break;
 		default:
 			break;
 		}
@@ -454,7 +485,8 @@ int train(Network* n, int count, double thresh, FILE* log)
 			FORFROM0STEP1(b, n->batch)
 			{
 				//设置输入
-				n->neurons[0].data.d11.in = n->x[b];
+				if(n->neurons[0].dimension[0]==1) n->neurons[0].data.d11.in = n->x[b][0][0];
+				else n->neurons[0].data.d33.in = n->x[b];
 				//前向
 				run(n);
 				//print1dArray(n->out, n->ow);
@@ -480,11 +512,20 @@ int train(Network* n, int count, double thresh, FILE* log)
 		FORFROM0STEP1(b, n->batch)
 		{
 			//设置输入
-			n->neurons[0].data.d11.in = n->x[b];
+			if (n->neurons[0].dimension[0] == 1) n->neurons[0].data.d11.in = n->x[b][0][0];
+			else n->neurons[0].data.d33.in = n->x[b];
 			//前向
 			run(n);
-			print1dArray(n->out, n->ow);
-			print1dArray(n->y[b], n->ow);
+			if (n->neurons[n->number - 1].dimension[1] == 1)
+			{
+				print1dArray(n->out[0][0], n->ow);
+				print1dArray(n->y[b][0][0], n->ow);
+			}
+			else
+			{
+				print3dArray(n->out, n->ol,n->oh,n->ow);
+				print3dArray(n->y[b], n->ol, n->oh, n->ow);
+			}
 		}
 	}
 	else
@@ -499,7 +540,8 @@ int train(Network* n, int count, double thresh, FILE* log)
 				FORFROM0STEP1(b, rem)
 				{
 					//设置输入
-					n->neurons[0].data.d11.in = n->x[b];
+					if (n->neurons[0].dimension[0] == 1) n->neurons[0].data.d11.in = n->x[b][0][0];
+					else n->neurons[0].data.d33.in = n->x[b];
 					//前向
 					run(n);
 					//print1dArray(n->out, n->ow);
@@ -532,54 +574,144 @@ void none(Network* n)
 }
 double SquareLoss(struct _Network* n,int indx)
 {
-	int k;
 	double tmp,sum=0;
-	FORFROM0STEP1(k, n->ow)
+	int i, j, l;
+	if (n->neurons[n->number - 1].dimension[1] == 1)
 	{
-		tmp = n->out[k] - n->y[indx][k];
-		sum += tmp * tmp;
+		FORFROM0STEP1(i, n->ow)
+		{
+			tmp = n->out[0][0][i] - n->y[indx][0][0][i];
+			CONTINUE_IF_NEAR_ZERO(tmp);
+			sum += tmp * tmp;
+		}
 	}
-	n->loss += sum/n->batch;
+	else
+	{
+		FORFROM0STEP1(l, n->ol)
+		{
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					tmp = n->out[l][i][j] - n->y[indx][l][i][j];
+					CONTINUE_IF_NEAR_ZERO(tmp);
+					sum += tmp * tmp;
+				}
+			}
+		}
+	}
+	n->loss += sum / n->batch;
 	return n->loss;
 }
 double CrossEntropyLoss(struct _Network* n, int indx)
 {
-	int k;
 	double sum = 0;
-	FORFROM0STEP1(k, n->ow)
+	int i, j, l;
+	if (n->neurons[n->number - 1].dimension[1] == 1)
 	{
-		sum -= n->y[indx][k] * log(n->out[k]);
-		sum-= (1-n->y[indx][k]) * log(1-n->out[k]);
+		FORFROM0STEP1(i, n->ow)
+		{
+			//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+			sum -= n->y[indx][0][0][i] * log(n->out[0][0][i]);
+			sum -= (1 - n->y[indx][0][0][i]) * log(1 - n->out[0][0][i]);
+		}
+	}
+	else
+	{
+		FORFROM0STEP1(l, n->ol)
+		{
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					sum -= n->y[indx][l][i][j] * log(n->out[l][i][j]);
+					sum -= (1 - n->y[indx][l][i][j]) * log(1 - n->out[l][i][j]);
+				}
+			}
+		}
 	}
 	n->loss += sum / n->batch;
 	return n->loss;
 }
 void DSquareloss(struct _Network* n, int indx)
 {
-	int i;
 	double d = ((double)2) / n->batch;
-	FORFROM0STEP1(i, n->ow)
+	int i, j, l;
+	if (n->neurons[n->number - 1].dimension[1] == 1)
 	{
-		n->neurons[n->number - 1].data.d11.dout[i] = d*(n->out[i] - n->y[indx][i]);
+		FORFROM0STEP1(i, n->ow)
+		{
+			//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+			n->neurons[n->number - 1].data.d11.dout[i] = d * (n->out[0][0][i] - n->y[indx][0][0][i]);
+		}
+	}
+	else
+	{
+		FORFROM0STEP1(l, n->ol)
+		{
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+					n->neurons[n->number - 1].data.d33.dout[l][i][j] = d * (n->out[l][i][j] - n->y[indx][l][i][j]);
+				}
+			}
+		}
 	}
 }
 void DCrossEntropyLoss(struct _Network* n, int indx)
 {
-	int i;
-	//double d = ((double)2) / n->batch;
-	FORFROM0STEP1(i, n->ow)
+	int i,j,l;
+	if (n->neurons[n->number - 1].dimension[1] == 1)
 	{
-	//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
-		n->neurons[n->number - 1].data.d11.dout[i]= -(n->y[indx][i]/n->out[i]+ (n->y[indx][i]-1) / (1-n->out[i]))/n->batch;
+		FORFROM0STEP1(i, n->ow)
+		{
+			//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+			n->neurons[n->number - 1].data.d11.dout[i] = -(n->y[indx][0][0][i] / n->out[0][0][i] + (n->y[indx][0][0][i] - 1) / (1 - n->out[0][0][i])) / n->batch;
+		}
+	}
+	else
+	{
+		FORFROM0STEP1(l, n->ol)
+		{
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+					n->neurons[n->number - 1].data.d33.dout[l][i][j] = -(n->y[indx][l][i][j] / n->out[l][i][j] + (n->y[indx][l][i][j] - 1) / (1 - n->out[l][i][j])) / n->batch;
+				}
+			}
+		}
 	}
 }
 void ResetLosses(Network* n)
 {
-	int i;
 	n->loss = 0;
-	FORFROM0STEP1(i, n->ow)
+	int i, j, l;
+	//double d = ((double)2) / n->batch;
+	if (n->neurons[n->number - 1].dimension[1] == 1)
 	{
-		n->neurons[n->number - 1].data.d11.dout[i] = 0;
+		FORFROM0STEP1(i, n->ow)
+		{
+			//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+			n->neurons[n->number - 1].data.d11.dout[i] = 0;
+		}
+	}
+	else
+	{
+		FORFROM0STEP1(l, n->ol)
+		{
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					//	CONTINUE_IF_NEAR_ZERO(n->y[indx][i]);
+					n->neurons[n->number - 1].data.d33.dout[l][i][j] = 0;
+				}
+			}
+		}
 	}
 }
 void InitArgs(Network* n)
@@ -669,21 +801,33 @@ void ReadHeader(Network* n)
 	}
 	//分配空间
 	//一维情况
-	if (!(n->x)) n->x = new2dDoubleArray(n->batch, n->iw);
-	if (!(n->y)) n->y = new2dDoubleArray(n->batch, n->ow);
+	if (!(n->x)) n->x = new4dDoubleArray(n->batch, n->il, n->ih, n->iw);
+	if (!(n->y)) n->y = new4dDoubleArray(n->batch, n->ol, n->oh, n->ow);
 }
 void ReadData(Network* n,int num)
 {
-	int i, j;
-	FORFROM0STEP1(i, num)
+	int i, j,l,d;
+	FORFROM0STEP1(d, num)
 	{
-		FORFROM0STEP1(j, n->iw)
+		FORFROM0STEP1(l, n->il)
 		{
-			fscanf(n->dataSet, "%lf", n->x[i] + j);
+			FORFROM0STEP1(i, n->ih)
+			{
+				FORFROM0STEP1(j, n->iw)
+				{
+					fscanf(n->dataSet, "%lf", n->x[d][l][i] + j);
+				}
+			}
 		}
-		FORFROM0STEP1(j, n->ow)
+		FORFROM0STEP1(l, n->ol)
 		{
-			fscanf(n->dataSet, "%lf", n->y[i] + j);
+			FORFROM0STEP1(i, n->oh)
+			{
+				FORFROM0STEP1(j, n->ow)
+				{
+					fscanf(n->dataSet, "%lf", n->y[d][l][i] + j);
+				}
+			}
 		}
 	}
 }
