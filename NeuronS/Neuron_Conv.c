@@ -154,9 +154,9 @@ void SetConv(Neuron* n, double learningRate, char* act, char* needAlloc)
 	n->arg.conv.grad.weight = needAlloc[GRAD] ? new4dDoubleArray(n->info.conv.ol, n->info.conv.il, n->info.conv.kh, n->info.conv.kw) : NULL;
 	n->arg.conv.delta.weight = needAlloc[DELTA] ? new4dDoubleArray(n->info.conv.ol, n->info.conv.il, n->info.conv.kh, n->info.conv.kw) : NULL;
 	n->arg.conv.shadow.weight = needAlloc[SHADOW] ? new4dDoubleArray(n->info.conv.ol, n->info.conv.il, n->info.conv.kh, n->info.conv.kw) : NULL;
-	RSD(n->arg.conv.grad.bias, n->info.fc.out);
-	RSD(n->arg.conv.shadow.bias, n->info.fc.out);
-	RSD(n->arg.conv.delta.bias, n->info.fc.out);
+	RSD(n->arg.conv.grad.bias, n->info.conv.ol);
+	RSD(n->arg.conv.shadow.bias, n->info.conv.ol);
+	RSD(n->arg.conv.delta.bias, n->info.conv.ol);
 	if (n->extraArgCount)
 	{
 		//开辟额外参数空间

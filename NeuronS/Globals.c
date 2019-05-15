@@ -4,7 +4,7 @@ double**** new4dDoubleArray(int d, int l, int h, int w)
 	int i, j, k;
 	int t1 = w * sizeof(double);
 	int t2 = h * sizeof(double*);
-	int t3 = l * sizeof(double***);
+	int t3 = l * sizeof(double**);
 	double**** r = MLN(double***, d);
 	for (k = 0; k < d; k++)
 	{

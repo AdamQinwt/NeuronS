@@ -73,8 +73,8 @@ void bpMaxPool(struct _Neuron* n)
 			tmp = n->info.conv.pairs[i][j].head;
 			FORFROM0STEP1(l, n->info.conv.ol)
 			{
-				tmp = tmp->next;
 				n->data.d33.din[l][tmp->ay][tmp->ax] += n->data.d33.dout[l][i][j];
+				tmp = tmp->next;
 			}
 		}
 	}

@@ -300,7 +300,7 @@ void _Normalized_Initialization_FC(Neuron* n,double absRange)
 	FORFROM0STEP1(i, n->info.fc.in)
 	{
 		assignRandomDoubleArray(n->arg.fc.original.weight[i], n->info.fc.out, absRange);
-		print1dArray(n->arg.fc.original.weight[i], n->info.fc.out);
+		//print1dArray(n->arg.fc.original.weight[i], n->info.fc.out);
 	}
 	assignZeroDoubleArray(n->arg.fc.original.bias, n->info.fc.out);
 }
@@ -311,9 +311,9 @@ void _Normalized_Initialization_Conv(Neuron* n, double absRange)
 	{
 		FORFROM0STEP1(i, n->info.conv.il)
 		{
-			FORFROM0STEP1(j, n->info.conv.oh)
+			FORFROM0STEP1(j, n->info.conv.kh)
 			{
-				assignRandomDoubleArray(n->arg.conv.original.weight[k][i][j], n->info.conv.oh, absRange);
+				assignRandomDoubleArray(n->arg.conv.original.weight[k][i][j], n->info.conv.kw, absRange);
 			}
 		}
 	}
