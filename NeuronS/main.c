@@ -54,7 +54,7 @@ main()
 main()
 {
 	srand(time(NULL));
-	FILE* dataset = fopen("fvc/300_data2.txt", "r");
+	FILE* dataset = fopen("fvc/500_data2.txt", "r");
 	//FILE* dataset = fopen("mnist/data.txt", "r");
 	Network* p = newNetwork("fvc", 1, 32, 32, 1, 1, 2);
 	p->dataSet = dataset;
@@ -166,8 +166,8 @@ main()
 	Connect(p->neurons + 3, p->neurons + 4);
 	Connect(p->neurons + 4, p->neurons + 5);
 	Connect(p->neurons + 5, p->neurons + 6);
-	//train(p, 50, 0.01, stdout);
 	test(p, stdout);
+	//train(p, 100, 0.01, stdout);
 	//RecordArgs(p);
 	Dtor(p);
 	fclose(dataset);

@@ -1,3 +1,2 @@
-﻿  main.c
-e:\code\c\neurons\neurons\main.c(56): warning C4244: “函数”: 从“time_t”转换到“unsigned int”，可能丢失数据
+﻿  Network.c
   NeuronS.vcxproj -> E:\Code\C\NeuronS\Debug\NeuronS.exe

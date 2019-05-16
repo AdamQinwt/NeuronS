@@ -652,8 +652,6 @@ int train(Network* n, int count, double thresh, FILE* flog)
 				//后向
 				bp(n);
 			}
-			//优化
-			n->Optimizer(n);
 			//输出结果
 			//if(!(n->trainingStep&0xff)) 
 			fprintf(flog, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
@@ -664,6 +662,8 @@ int train(Network* n, int count, double thresh, FILE* flog)
 				fprintf(flog, "Complete!\n");
 				break;
 			}
+			//优化
+			n->Optimizer(n);
 		}
 		FORFROM0STEP1(b, n->batch)
 		{
@@ -707,8 +707,6 @@ int train(Network* n, int count, double thresh, FILE* flog)
 					//后向
 					bp(n);
 				}
-				//优化
-				n->Optimizer(n);
 				//输出结果
 				//if(!(n->trainingStep&0xff)) 
 				fprintf(flog, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
@@ -719,6 +717,8 @@ int train(Network* n, int count, double thresh, FILE* flog)
 					fprintf(flog, "Complete!\n");
 					break;
 				}
+				//优化
+				n->Optimizer(n);
 			}
 		}
 	}
@@ -751,20 +751,20 @@ int test(Network* n, FILE* flog)
 			run(n);
 			if (n->neurons[n->number - 1].dimension[1] == 1)
 			{
-				print1dArray(flog, n->out[0][0], n->ow);
+				//print1dArray(flog, n->out[0][0], n->ow);
 				actual = argmax(n->out[0][0], n->ow);
 				ans = argmax(n->y[b][0][0], n->ow);
 				cntAns[ans]++;
-				fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
+				//fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
 				if (ans == actual)
 				{
-					fputs("correct\n", flog);
+					//fputs("correct\n", flog);
 					cntCorrect[actual]++;
 					correct++;
 				}
 				else
 				{
-					fputs("wrong\n", flog);
+					//fputs("wrong\n", flog);
 				}
 				//print1dArray(n->y[b][0][0], n->ow);
 			}
@@ -791,20 +791,20 @@ int test(Network* n, FILE* flog)
 				run(n);
 				if (n->neurons[n->number - 1].dimension[1] == 1)
 				{
-					print1dArray(flog, n->out[0][0], n->ow);
+					//print1dArray(flog, n->out[0][0], n->ow);
 					actual = argmax(n->out[0][0], n->ow);
 					ans = argmax(n->y[b][0][0], n->ow);
 					cntAns[ans]++;
-					fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
+					//fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
 					if (ans == actual)
 					{
-						fputs("correct\n", flog);
+						//fputs("correct\n", flog);
 						cntCorrect[actual]++;
 						correct++;
 					}
 					else
 					{
-						fputs("wrong\n", flog);
+						//fputs("wrong\n", flog);
 					}
 					//print1dArray(n->y[b][0][0], n->ow);
 				}
