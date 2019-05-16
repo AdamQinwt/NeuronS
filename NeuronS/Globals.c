@@ -158,34 +158,34 @@ double drelu(double y)
 {
 	return y > 0 ? 1 : 0;
 }
-void print1dArray(double* a, int w)
+void print1dArray(FILE* fp, double* a, int w)
 {
 	int i;
-	for (i = 0; i < w; i++) printf("%.3lf\t", a[i]);
-	putchar('\n');
+	for (i = 0; i < w; i++) fprintf(fp,"%.3lf\t", a[i]);
+	fputc('\n',fp);
 }
-void print2dArray(double** a, int h, int w)
+void print2dArray(FILE* fp, double** a, int h, int w)
 {
 	int i,j;
 	for (i = 0; i < h; i++)
 	{
-		for (j = 0; j < w; j++) printf("%.3lf\t", a[i][j]);
-		putchar('\n');
+		for (j = 0; j < w; j++) fprintf(fp,"%.3lf\t", a[i][j]);
+		fputc('\n',fp);
 	}
 }
-void print3dArray(double*** a, int l, int h, int w)
+void print3dArray(FILE* fp, double*** a, int l, int h, int w)
 {
 	int i, j,k;
 	for (k = 0; k < l; k++)
 	{
 		for (i = 0; i < h; i++)
 		{
-			for (j = 0; j < w; j++) printf("%.3lf\t", a[k][i][j]);
-			putchar('\n');
+			for (j = 0; j < w; j++) fprintf(fp,"%.3lf\t", a[k][i][j]);
+			fputc('\n',fp);
 		}
 	}
 }
-void print4dArray(double**** a, int k, int l, int h, int w)
+void print4dArray(FILE* fp, double**** a, int k, int l, int h, int w)
 {
 	int i, j, m,d;
 	for (d = 0; d < k; d++)
@@ -194,8 +194,8 @@ void print4dArray(double**** a, int k, int l, int h, int w)
 		{
 			for (i = 0; i < h; i++)
 			{
-				for (j = 0; j < w; j++) printf("%.3lf\t", a[d][m][i][j]);
-				putchar('\n');
+				for (j = 0; j < w; j++) fprintf(fp,"%.3lf\t", a[d][m][i][j]);
+				fputc('\n',fp);
 			}
 		}
 	}

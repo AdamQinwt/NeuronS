@@ -140,8 +140,59 @@ void _AdaGrad_Optimizer_FC(Neuron* n,double delta)
 		}
 	}
 }
-void _AdaGrad_Optimizer_CONV(Neuron* n, double delta) 
+void _AdaGrad_Optimizer_CONV(Neuron* n, double delta)
 {
+	int i, j, k, l;
+	if (n->count == 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.shadow.bias[k] += n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * (n->learningRate / (delta + sqrt(n->arg.conv.shadow.bias[k])));
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.shadow.weight[k][l][i][j] += n->arg.conv.grad.weight[k][l][i][j] * n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * (n->learningRate / (delta + sqrt(n->arg.conv.shadow.weight[k][l][i][j])));
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
+	else //(n->count >= 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.grad.bias[k] /= n->count;
+			n->arg.conv.shadow.bias[k] += n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * (n->learningRate / (delta + sqrt(n->arg.conv.shadow.bias[k])));
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.grad.weight[k][l][i][j] /= n->count;
+						n->arg.conv.shadow.weight[k][l][i][j] += n->arg.conv.grad.weight[k][l][i][j] * n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * (n->learningRate / (delta + sqrt(n->arg.conv.shadow.weight[k][l][i][j])));
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
 }
 void AdaGrad_Optimizer(Network* n)
 {
@@ -167,15 +218,15 @@ void _RMSProp_Optimizer_FC(Neuron* n, double delta,double ro)
 	{
 		FORFROM0STEP1(j, n->info.fc.out)
 		{
-			n->arg.fc.shadow.bias[j] += n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
-			n->arg.fc.delta.bias[j] = -n->arg.fc.grad.bias[j] * (n->learningRate / (delta + sqrt(n->arg.fc.shadow.bias[j])));
+			n->arg.fc.shadow.bias[j] = ro* n->arg.fc.shadow.bias[j]+(1-ro)*n->arg.fc.grad.bias[j] * n->arg.fc.grad.bias[j];
+			n->arg.fc.delta.bias[j] = -n->arg.fc.grad.bias[j] * n->learningRate / sqrt(delta + n->arg.fc.shadow.bias[j]);
 			n->arg.fc.original.bias[j] += n->arg.fc.delta.bias[j];
 			n->arg.fc.grad.bias[j] = 0;
 			CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[j]);
 			FORFROM0STEP1(i, n->info.fc.in)
 			{
-				n->arg.fc.shadow.weight[i][j] += n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
-				n->arg.fc.delta.weight[i][j] = -n->arg.fc.grad.weight[i][j] * (n->learningRate / (delta + sqrt(n->arg.fc.shadow.weight[i][j])));
+				n->arg.fc.shadow.weight[i][j] = ro * n->arg.fc.shadow.weight[i][j] + (1 - ro)*n->arg.fc.grad.weight[i][j] * n->arg.fc.grad.weight[i][j];
+				n->arg.fc.delta.weight[i][j] = -n->arg.fc.grad.weight[i][j] * n->learningRate / sqrt(delta + n->arg.fc.shadow.weight[i][j]);
 				n->arg.fc.original.weight[i][j] += n->arg.fc.delta.weight[i][j];
 				n->arg.fc.grad.weight[i][j] = 0;
 			}
@@ -204,6 +255,57 @@ void _RMSProp_Optimizer_FC(Neuron* n, double delta,double ro)
 }
 void _RMSProp_Optimizer_CONV(Neuron* n, double delta,double ro)
 {
+	int i, j, k, l;
+	if (n->count == 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.shadow.bias[k] = ro* n->arg.conv.shadow.bias[k]+(1-ro)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate / sqrt(delta + n->arg.conv.shadow.bias[k]);
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.shadow.weight[k][l][i][j] = ro * n->arg.conv.shadow.weight[k][l][i][j] + (1 - ro)*n->arg.conv.grad.weight[k][l][i][j] * n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * n->learningRate / sqrt(delta + n->arg.conv.shadow.weight[k][l][i][j]);
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
+	else //(n->count >= 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.shadow.bias[k] /= n->count;
+			n->arg.conv.shadow.bias[k] = ro * n->arg.conv.shadow.bias[k] + (1 - ro)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -n->arg.conv.grad.bias[k] * n->learningRate / sqrt(delta + n->arg.conv.shadow.bias[k]);
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.grad.weight[k][l][i][j] /= n->count;
+						n->arg.conv.shadow.weight[k][l][i][j] = ro * n->arg.conv.shadow.weight[k][l][i][j] + (1 - ro)*n->arg.conv.grad.weight[k][l][i][j] * n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -n->arg.conv.grad.weight[k][l][i][j] * n->learningRate / sqrt(delta + n->arg.conv.shadow.weight[k][l][i][j]);
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
 }
 void RMSProp_Optimizer(Network* n)
 {
@@ -272,7 +374,61 @@ void _Adam_Optimizer_FC(Neuron* n, double delta, double ro1, double ro2,double r
 }
 void _Adam_Optimizer_CONV(Neuron* n, double delta, double ro1, double ro2, double ro1t, double ro2t, double epsilon)
 {
-	//
+	int i, j, k, l;
+	if (n->count == 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.shadow.bias[k] = ro2 * n->arg.conv.shadow.bias[k] + (1 - ro2)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->extraArg[0].conv.bias[k] = ro1 * n->extraArg[0].conv.bias[k] + (1 - ro1)*n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -epsilon * n->extraArg[0].conv.bias[k] / (1 - ro1t) / (sqrt(n->arg.conv.shadow.bias[k] / (1 - ro2t)) + delta);
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.shadow.weight[k][l][i][j] = ro2 * n->arg.conv.shadow.weight[k][l][i][j] + (1 - ro2)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.weight[k][l][i][j];
+						n->extraArg[0].conv.weight[k][l][i][j] = ro1 * n->extraArg[0].conv.weight[k][l][i][j] + (1 - ro1)*n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -epsilon * n->extraArg[0].conv.weight[k][l][i][j] / (1 - ro1t) / (sqrt(n->arg.conv.shadow.weight[k][l][i][j] / (1 - ro2t)) + delta);
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
+	else //(n->count >= 1)
+	{
+		FORFROM0STEP1(k, n->info.conv.ol)
+		{
+			n->arg.conv.shadow.bias[k] /= n->count;
+			n->arg.conv.shadow.bias[k] = ro2 * n->arg.conv.shadow.bias[k] + (1 - ro2)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.bias[k];
+			n->extraArg[0].conv.bias[k] = ro1 * n->extraArg[0].conv.bias[k] + (1 - ro1)*n->arg.conv.grad.bias[k];
+			n->arg.conv.delta.bias[k] = -epsilon * n->extraArg[0].conv.bias[k] / (1 - ro1t) / (sqrt(n->arg.conv.shadow.bias[k] / (1 - ro2t)) + delta);
+			n->arg.conv.original.bias[k] += n->arg.conv.delta.bias[k];
+			n->arg.conv.grad.bias[k] = 0;
+			//CONTINUE_IF_NEAR_ZERO(n->arg.fc.delta.bias[k]);
+			FORFROM0STEP1(l, n->info.conv.il)
+			{
+				FORFROM0STEP1(i, n->info.conv.kh)
+				{
+					FORFROM0STEP1(j, n->info.conv.kw)
+					{
+						n->arg.conv.shadow.weight[k][l][i][j] /= n->count;
+						n->arg.conv.shadow.weight[k][l][i][j] = ro2 * n->arg.conv.shadow.weight[k][l][i][j] + (1 - ro2)*n->arg.conv.grad.bias[k] * n->arg.conv.grad.weight[k][l][i][j];
+						n->extraArg[0].conv.weight[k][l][i][j] = ro1 * n->extraArg[0].conv.weight[k][l][i][j] + (1 - ro1)*n->arg.conv.grad.weight[k][l][i][j];
+						n->arg.conv.delta.weight[k][l][i][j] = -epsilon * n->extraArg[0].conv.weight[k][l][i][j] / (1 - ro1t) / (sqrt(n->arg.conv.shadow.weight[k][l][i][j] / (1 - ro2t)) + delta);
+						n->arg.conv.original.weight[k][l][i][j] += n->arg.conv.delta.weight[k][l][i][j];
+						n->arg.conv.grad.weight[k][l][i][j] = 0;
+					}
+				}
+			}
+		}
+	}
 }
 void Adam_Optimizer(Network* n)
 {
@@ -470,7 +626,7 @@ Network* newNetwork(char* name,int il, int ih, int iw,int ol, int oh, int ow)
 	//开辟输入输出空间、答案空间（先在外界完成）
 	return n;
 }
-int train(Network* n, int count, double thresh, FILE* log)
+int train(Network* n, int count, double thresh, FILE* flog)
 {
 	int b,num,rem;
 	//初始化过程
@@ -500,12 +656,12 @@ int train(Network* n, int count, double thresh, FILE* log)
 			n->Optimizer(n);
 			//输出结果
 			//if(!(n->trainingStep&0xff)) 
-			fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
+			fprintf(flog, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
 			//判断误差
 			if (n->loss < thresh)
 			{
 				//完成
-				fprintf(log, "Complete!\n");
+				fprintf(flog, "Complete!\n");
 				break;
 			}
 		}
@@ -518,13 +674,13 @@ int train(Network* n, int count, double thresh, FILE* log)
 			run(n);
 			if (n->neurons[n->number - 1].dimension[1] == 1)
 			{
-				print1dArray(n->out[0][0], n->ow);
-				print1dArray(n->y[b][0][0], n->ow);
+				print1dArray(flog,n->out[0][0], n->ow);
+				print1dArray(flog, n->y[b][0][0], n->ow);
 			}
 			else
 			{
-				print3dArray(n->out, n->ol,n->oh,n->ow);
-				print3dArray(n->y[b], n->ol, n->oh, n->ow);
+				print3dArray(flog, n->out, n->ol,n->oh,n->ow);
+				print3dArray(flog, n->y[b], n->ol, n->oh, n->ow);
 			}
 		}
 	}
@@ -555,18 +711,119 @@ int train(Network* n, int count, double thresh, FILE* log)
 				n->Optimizer(n);
 				//输出结果
 				//if(!(n->trainingStep&0xff)) 
-				fprintf(log, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
+				fprintf(flog, "iter:\t%d\tloss=%lf\n", n->trainingStep, n->loss);
 				//判断误差
 				if (n->loss < thresh)
 				{
 					//完成
-					fprintf(log, "Complete!\n");
+					fprintf(flog, "Complete!\n");
 					break;
 				}
 			}
 		}
 	}
 	return n->trainingStep;
+}
+int test(Network* n, FILE* flog)
+{
+	int b, num, rem;
+	int correct=0;
+	int c;
+	int ans, actual;
+	int* cntAns=MLN(int,n->ow);
+	memset(cntAns, 0, n->ow * sizeof(int));
+	int* cntCorrect = MLN(int, n->ow);
+	memset(cntCorrect, 0, n->ow * sizeof(int));
+	//初始化过程
+	//读入数据文件头
+	c=ReadHeader(n);
+	printf("c=%d\n", c);
+	if (n->batchCount == 1)
+	{
+		ReadData(n, n->batch);
+		ResetLosses(n);
+		FORFROM0STEP1(b, n->batch)
+		{
+			//设置输入
+			if (n->neurons[0].dimension[0] == 1) n->neurons[0].data.d11.in = n->x[b][0][0];
+			else n->neurons[0].data.d33.in = n->x[b];
+			//前向
+			run(n);
+			if (n->neurons[n->number - 1].dimension[1] == 1)
+			{
+				print1dArray(flog, n->out[0][0], n->ow);
+				actual = argmax(n->out[0][0], n->ow);
+				ans = argmax(n->y[b][0][0], n->ow);
+				cntAns[ans]++;
+				fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
+				if (ans == actual)
+				{
+					fputs("correct\n", flog);
+					cntCorrect[actual]++;
+					correct++;
+				}
+				else
+				{
+					fputs("wrong\n", flog);
+				}
+				//print1dArray(n->y[b][0][0], n->ow);
+			}
+			else
+			{
+				print3dArray(flog, n->out, n->ol, n->oh, n->ow);
+				print3dArray(flog, n->y[b], n->ol, n->oh, n->ow);
+			}
+		}
+	}
+	else
+	{
+		FORFROM0STEP1(num, n->batchCount)
+		{
+			rem = num == n->batchCount - 1 ? n->batchRemainder : n->batch;
+			ReadData(n, rem);
+			ResetLosses(n);
+			FORFROM0STEP1(b, rem)
+			{
+				//设置输入
+				if (n->neurons[0].dimension[0] == 1) n->neurons[0].data.d11.in = n->x[b][0][0];
+				else n->neurons[0].data.d33.in = n->x[b];
+				//前向
+				run(n);
+				if (n->neurons[n->number - 1].dimension[1] == 1)
+				{
+					print1dArray(flog, n->out[0][0], n->ow);
+					actual = argmax(n->out[0][0], n->ow);
+					ans = argmax(n->y[b][0][0], n->ow);
+					cntAns[ans]++;
+					fprintf(flog, "Output is %d.\n Answer is %d.\n", actual, ans);
+					if (ans == actual)
+					{
+						fputs("correct\n", flog);
+						cntCorrect[actual]++;
+						correct++;
+					}
+					else
+					{
+						fputs("wrong\n", flog);
+					}
+					//print1dArray(n->y[b][0][0], n->ow);
+				}
+				else
+				{
+					print3dArray(flog, n->out, n->ol, n->oh, n->ow);
+					print3dArray(flog, n->y[b], n->ol, n->oh, n->ow);
+				}
+			}
+		}
+	}
+	fprintf(flog, "%d inputs tested.\n%d correct.\nAccuracy is %.2lf%%\n", c,correct, 100*((double)correct) / c);
+	FORFROM0STEP1(b, n->ow)
+	{
+		fprintf(flog, "%d inputs for answer=%d tested.\n%d correct.\nAccuracy is %.2lf%%\n", cntAns[b], b,cntCorrect[b], 100 * ((double)cntCorrect[b]) / cntAns[b]);
+	}
+	free(cntAns);
+	free(cntCorrect);
+	return correct;
 }
 void none(Network* n) 
 {
@@ -772,8 +1029,9 @@ void RecordArgs(Network* n)
 	sprintf(fname, "%s/arg", n->name);
 	FILE* fp = fopen(fname, "wb");
 	if (fp) SaveArgs(n, fp);
+	fclose(fp);
 }
-void ReadHeader(Network* n)
+int ReadHeader(Network* n)
 {
 	//数据文件为文本文件
 	//由调用者预先指定batch或batchCount，ReadData函数只负责分配输入输出空间并读入数据
@@ -803,6 +1061,7 @@ void ReadHeader(Network* n)
 	//一维情况
 	if (!(n->x)) n->x = new4dDoubleArray(n->batch, n->il, n->ih, n->iw);
 	if (!(n->y)) n->y = new4dDoubleArray(n->batch, n->ol, n->oh, n->ow);
+	return cnt;
 }
 void ReadData(Network* n,int num)
 {
@@ -816,9 +1075,12 @@ void ReadData(Network* n,int num)
 				FORFROM0STEP1(j, n->iw)
 				{
 					fscanf(n->dataSet, "%lf", n->x[d][l][i] + j);
+					//printf("%.3lf\t", n->x[d][l][i][j]);
 				}
+				//putchar('\n');
 			}
 		}
+		//PS;
 		FORFROM0STEP1(l, n->ol)
 		{
 			FORFROM0STEP1(i, n->oh)
@@ -826,7 +1088,10 @@ void ReadData(Network* n,int num)
 				FORFROM0STEP1(j, n->ow)
 				{
 					fscanf(n->dataSet, "%lf", n->y[d][l][i] + j);
+					//printf("%.3lf\t", n->y[d][l][i][j]);
 				}
+				//putchar('\n');
+				//PS;
 			}
 		}
 	}

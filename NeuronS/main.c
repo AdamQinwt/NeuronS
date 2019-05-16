@@ -54,52 +54,81 @@ main()
 main()
 {
 	srand(time(NULL));
-	FILE* dataset = fopen("mnist/data.txt", "r");
-	Network* p = newNetwork("mnist", 1, 28, 28, 1, 1, 10);
+	FILE* dataset = fopen("fvc/300_data2.txt", "r");
+	//FILE* dataset = fopen("mnist/data.txt", "r");
+	Network* p = newNetwork("fvc", 1, 32, 32, 1, 1, 2);
 	p->dataSet = dataset;
-	p->batch = 50;
-	p->number = 5;
+	p->batchCount = 1;
+	p->number = 7;
 	p->neurons = MLN(Neuron, p->number);
 	p->neurons[0].type = CONV;
 	p->neurons[1].type = MAX_POOL;
-	p->neurons[2].type = FC;
-	p->neurons[3].type = FC;
+	p->neurons[2].type = CONV;
+	p->neurons[3].type = MAX_POOL;
 	p->neurons[4].type = FC;
+	p->neurons[5].type = FC;
+	p->neurons[6].type = FC;
 
 	p->neurons[0].info.conv.il = 1;
-	p->neurons[0].info.conv.ih = 28;
-	p->neurons[0].info.conv.iw = 28;
+	p->neurons[0].info.conv.ih = 32;
+	p->neurons[0].info.conv.iw = 32;
 	p->neurons[0].info.conv.kh = 3;
 	p->neurons[0].info.conv.kw = 3;
 	p->neurons[0].info.conv.ol = 8;
-	p->neurons[0].info.conv.oh = 28;
-	p->neurons[0].info.conv.ow = 28;
+	p->neurons[0].info.conv.oh = 32;
+	p->neurons[0].info.conv.ow = 32;
 	p->neurons[0].info.conv.ph = 1;
 	p->neurons[0].info.conv.pw = 1;
 	p->neurons[0].info.conv.sh = 1;
 	p->neurons[0].info.conv.sw = 1;
 
 	p->neurons[1].info.conv.il = 8;
-	p->neurons[1].info.conv.ih = 28;
-	p->neurons[1].info.conv.iw = 28;
+	p->neurons[1].info.conv.ih = 32;
+	p->neurons[1].info.conv.iw = 32;
 	p->neurons[1].info.conv.kh = 2;
 	p->neurons[1].info.conv.kw = 2;
 	p->neurons[1].info.conv.ol = 8;
-	p->neurons[1].info.conv.oh = 14;
-	p->neurons[1].info.conv.ow = 14;
+	p->neurons[1].info.conv.oh = 16;
+	p->neurons[1].info.conv.ow = 16;
 	p->neurons[1].info.conv.ph = 0;
 	p->neurons[1].info.conv.pw = 0;
 	p->neurons[1].info.conv.sh = 2;
 	p->neurons[1].info.conv.sw = 2;
 
-	p->neurons[2].info.fc.in = 1568;
-	p->neurons[2].info.fc.out = 512;
+	p->neurons[2].info.conv.il = 8;
+	p->neurons[2].info.conv.ih = 16;
+	p->neurons[2].info.conv.iw = 16;
+	p->neurons[2].info.conv.kh = 3;
+	p->neurons[2].info.conv.kw = 3;
+	p->neurons[2].info.conv.ol = 16;
+	p->neurons[2].info.conv.oh = 16;
+	p->neurons[2].info.conv.ow = 16;
+	p->neurons[2].info.conv.ph = 1;
+	p->neurons[2].info.conv.pw = 1;
+	p->neurons[2].info.conv.sh = 1;
+	p->neurons[2].info.conv.sw = 1;
 
-	p->neurons[3].info.fc.in = 512;
-	p->neurons[3].info.fc.out = 128;
+	p->neurons[3].info.conv.il = 16;
+	p->neurons[3].info.conv.ih = 16;
+	p->neurons[3].info.conv.iw = 16;
+	p->neurons[3].info.conv.kh = 2;
+	p->neurons[3].info.conv.kw = 2;
+	p->neurons[3].info.conv.ol = 16;
+	p->neurons[3].info.conv.oh = 8;
+	p->neurons[3].info.conv.ow = 8;
+	p->neurons[3].info.conv.ph = 0;
+	p->neurons[3].info.conv.pw = 0;
+	p->neurons[3].info.conv.sh = 2;
+	p->neurons[3].info.conv.sw = 2;
 
-	p->neurons[4].info.fc.in = 128;
-	p->neurons[4].info.fc.out = 10;
+	p->neurons[4].info.fc.in = 1024;
+	p->neurons[4].info.fc.out = 512;
+
+	p->neurons[5].info.fc.in = 512;
+	p->neurons[5].info.fc.out = 128;
+
+	p->neurons[6].info.fc.in = 84;
+	p->neurons[6].info.fc.out = 2;
 
 	p->needAlloc[ORIGINAL] = 1;
 	p->needAlloc[GRAD] = 1;
@@ -126,6 +155,8 @@ main()
 	p->neurons[2].extraArgCount = 1;
 	p->neurons[3].extraArgCount = 1;
 	p->neurons[4].extraArgCount = 1;
+	p->neurons[5].extraArgCount = 1;
+	p->neurons[6].extraArgCount = 1;
 
 	Set(p);
 	InitArgs(p);
@@ -133,8 +164,11 @@ main()
 	Connect(p->neurons + 1, p->neurons + 2);
 	Connect(p->neurons + 2, p->neurons + 3);
 	Connect(p->neurons + 3, p->neurons + 4);
-	train(p, 100, 0.01, stdout);
-	RecordArgs(p);
+	Connect(p->neurons + 4, p->neurons + 5);
+	Connect(p->neurons + 5, p->neurons + 6);
+	//train(p, 50, 0.01, stdout);
+	test(p, stdout);
+	//RecordArgs(p);
 	Dtor(p);
 	fclose(dataset);
 	PS;

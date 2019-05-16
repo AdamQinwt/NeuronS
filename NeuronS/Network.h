@@ -38,6 +38,7 @@ typedef struct _Network
 }Network;
 Network* newNetwork(char* name,int il, int ih, int iw, int ol, int oh, int ow);
 int train(Network* n, int count, double thresh, FILE* log);
+int test(Network* n, FILE* log);
 void run(Network* n);
 void bp(Network* n);
 void AdaGrad_Optimizer(Network* n);
@@ -62,6 +63,6 @@ void DCrossEntropyLoss(struct _Network* n, int indx);
 void RecordArgs(Network* n);
 void SaveArgs(Network* n,FILE* fp);
 void ReadArgs(Network* n,FILE* fp);
-void ReadHeader(Network* n);
+int ReadHeader(Network* n);
 void ReadData(Network* n, int num);
 #endif
